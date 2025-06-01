@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1153671439",
+    "project_id": "wanderwise-808ff",
+    "storage_bucket": "wanderwise-808ff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1153671439:android:09fd41d98f4978c73a1e7a",
+        "android_client_info": {
+          "package_name": "com.example.travelbuddy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-DzTWPxvCJdYFpCpmr_bvaaHtORpJP4A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

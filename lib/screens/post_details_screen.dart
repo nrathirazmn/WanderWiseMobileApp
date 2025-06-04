@@ -15,7 +15,7 @@ class PostDetailsScreen extends StatefulWidget {
 class _PostDetailsScreenState extends State<PostDetailsScreen> {
   Future<void> _toggle(String field, List<dynamic> list, String postId) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null || postId.trim().isEmpty) return;
 
     final uid = user.uid;
     final ref = FirebaseFirestore.instance.collection('forum_posts').doc(postId);
@@ -134,45 +134,68 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Cancel'),
                 ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (selectedTripId != null) {
-                      await FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(uid)
-                          .collection('trips')
-                          .doc(selectedTripId)
-                          .update({
-                        'embeddedGuides': FieldValue.arrayUnion(
-                            guideUrl.isNotEmpty ? [guideUrl] : []),
-                      });
-                      Navigator.pop(context);
+              ElevatedButton(
+                onPressed: () async {
+                  print('🟡 Save Trip Button Pressed');
+                  if (selectedTripId != null && selectedTripId!.trim().isNotEmpty) {
+                    print('🔁 Saving to existing trip: $selectedTripId');
+
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(uid)
+                        .collection('trips')
+                        .doc(selectedTripId)
+                        .update({
+                      'embeddedGuides': FieldValue.arrayUnion(
+                          guideUrl.isNotEmpty ? [guideUrl] : []),
+                    });
+
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Guide added to existing trip!')),
+                    );
+
+                    Navigator.pushNamed(context, '/trip-details', arguments: selectedTripId);
+                  } else if (newTripName.trim().isNotEmpty) {
+                    if (startDate == null || endDate == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Guide added to existing trip!')),
+                        const SnackBar(content: Text('Please select start and end dates.')),
                       );
-                      Navigator.pushNamed(context, '/trip-details',
-                          arguments: selectedTripId);
-                    } else if (newTripName.trim().isNotEmpty) {
-                      final newTripRef = await FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(uid)
-                          .collection('trips')
-                          .add({
-                        'destination': newTripName.trim(),
-                        'startDate': startDate,
-                        'endDate': endDate,
-                        'embeddedGuides': guideUrl.isNotEmpty ? [guideUrl] : [],
-                      });
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('New trip created with guide!')),
-                      );
-                      Navigator.pushNamed(context, '/trip-details',
-                          arguments: newTripRef.id);
+                      print('❌ Missing start or end date');
+                      return;
                     }
-                  },
-                  child: const Text('Save Trip'),
-                ),
+
+                    print('🆕 Creating new trip: $newTripName');
+                    final newTripRef = await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(uid)
+                        .collection('trips')
+                        .add({
+                      'destination': newTripName.trim(),
+                      'startDate': startDate,
+                      'endDate': endDate,
+                      'embeddedGuides': guideUrl.isNotEmpty ? [guideUrl] : [],
+                      'createdAt': FieldValue.serverTimestamp(),
+                    });
+
+                    print('✅ Trip created with ID: ${newTripRef.id}');
+
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('New trip created with guide!')),
+                    );
+
+                    Navigator.pushNamed(context, '/trip-details', arguments: newTripRef.id);
+                  } else {
+                    print('❌ No trip selected or name empty');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please select or name a trip.')),
+                    );
+                  }
+                },
+                child: const Text('Save Trip'),
+              )
+
               ],
             );
           },
@@ -207,6 +230,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           final title = postData['title'] ?? '';
           final content = postData['content'] ?? '';
           final guideDownloadUrl = postData['guideDownloadUrl'] ?? '';
+          final author = postData['author'] ?? 'Anonymous';
 
           return Scaffold(
             appBar: AppBar(
@@ -229,7 +253,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                   const SizedBox(height: 16),
                   Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('by ${postData['author'] ?? 'Anonymous'}',
+                  Text('by $author',
                       style: TextStyle(color: Colors.grey[600])),
                   const SizedBox(height: 4),
                   if (timestamp.isNotEmpty)

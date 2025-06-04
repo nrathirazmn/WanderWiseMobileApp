@@ -68,8 +68,8 @@ class _TripDetailsScreenState extends State<TripDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      return const Scaffold(body: Center(child: Text("Please log in.")));
+    if (uid == null || widget.tripId.trim().isEmpty) {
+      return const Scaffold(body: Center(child: Text("Invalid trip ID or user not logged in.")));
     }
 
     final tripRef = FirebaseFirestore.instance

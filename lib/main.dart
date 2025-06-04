@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:travelbuddy/screens/trip_details_screen.dart';
 
 // Screens
 import 'screens/forum_screen.dart';
@@ -23,6 +22,7 @@ import 'screens/travel_buddy_setup_screen.dart';
 import 'screens/update_email_screen.dart';
 import 'screens/change_pass_screen.dart';
 import 'screens/trip_details_screen.dart';
+import 'screens/daily_itinerary_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,12 +46,42 @@ class TravelBuddyApp extends StatelessWidget {
       routes: {
         '/admin-update': (context) => AdminUpdateScreen(),
         '/landingpage': (context) => LandingPage(),
-        '/trip-details': (context) => TripDetailsScreen(tripId: '',),
+        '/trip-details': (context) {
+          final tripId = ModalRoute.of(context)?.settings.arguments as String?;
+          if (tripId == null || tripId.isEmpty) {
+            return Scaffold(
+              appBar: AppBar(title: Text('Error')),
+              body: Center(child: Text('Trip ID is missing')),
+            );
+          }
+          return TripDetailsScreen(tripId: tripId);
+        },
+        '/daily-itinerary': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+          if (args == null ||
+              args['tripId'] == null ||
+              args['tripTitle'] == null ||
+              args['startDate'] == null ||
+              args['endDate'] == null) {
+            return Scaffold(
+              appBar: AppBar(title: const Text("Missing Data")),
+              body: const Center(child: Text("Required trip details are missing.")),
+            );
+          }
+
+          return DailyItineraryScreen(
+            tripId: args['tripId'],
+            tripTitle: args['tripTitle'],
+            startDate: args['startDate'],
+            endDate: args['endDate'],
+          );
+        },
         '/travelbuddy-setup': (context) => TravelBuddySetupScreen(),
         '/login': (context) => LoginScreen(),
         '/change-password': (_) => ChangePasswordScreen(),
         '/update-email': (_) => UpdateEmailScreen(),
-        '/welcome': (context) => WelcomeScreen(userName: '',),
+        '/welcome': (context) => WelcomeScreen(userName: ''),
         '/register': (context) => RegisterScreen(),
         '/main': (context) => MainNavigation(),
         '/itinerary': (context) => ItineraryScreen(),
@@ -59,7 +89,7 @@ class TravelBuddyApp extends StatelessWidget {
         '/messages': (context) => MessageScreen(),
         '/expenses': (context) => ExpenseListScreen(),
         '/chat': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
           final isAI = args['isAI'] ?? false;
 
           return isAI
@@ -72,6 +102,12 @@ class TravelBuddyApp extends StatelessWidget {
                 );
         },
       },
+      onUnknownRoute: (settings) => MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text('Page Not Found')),
+          body: Center(child: Text('The page "${settings.name}" does not exist.')),
+        ),
+      ),
     );
   }
 }

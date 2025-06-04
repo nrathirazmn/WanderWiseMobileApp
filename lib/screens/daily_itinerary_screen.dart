@@ -27,18 +27,49 @@ class _DailyItineraryScreenState extends State<DailyItineraryScreen> {
   final Map<DateTime, TextEditingController> noteControllers = {};
   final Map<DateTime, List<String>> checklistItems = {};
   final Map<DateTime, TextEditingController> newChecklistInput = {};
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+
+  String? uid;
+  bool isReady = false;
 
   @override
   void initState() {
     super.initState();
-    travelDays = _generateDateRange(widget.startDate, widget.endDate);
-    for (var date in travelDays) {
-      noteControllers[date] = TextEditingController();
-      checklistItems[date] = [];
-      newChecklistInput[date] = TextEditingController();
-    }
-    _loadExistingData();
+
+    Future.delayed(Duration.zero, () async {
+      uid = FirebaseAuth.instance.currentUser?.uid;
+
+      print('🧭 Initializing DailyItineraryScreen with:');
+      print('Trip ID: ${widget.tripId}');
+      print('Trip Title: ${widget.tripTitle}');
+      print('Start Date: ${widget.startDate}');
+      print('End Date: ${widget.endDate}');
+      print('UID: $uid');
+
+      if (uid == null || widget.tripId.trim().isEmpty) {
+        print('❌ UID or tripId is missing!');
+        return;
+      }
+
+      travelDays = _generateDateRange(widget.startDate, widget.endDate);
+      for (var date in travelDays) {
+        noteControllers[date] = TextEditingController();
+        checklistItems[date] = [];
+        newChecklistInput[date] = TextEditingController();
+      }
+
+      await _loadExistingData();
+      setState(() {
+        isReady = true;
+      });
+
+      final currentDate = travelDays[selectedDayIndex];
+      print('🔍 isReady: $isReady, UID: $uid');
+      print('🔍 Controllers check: ');
+      print('- Has current date: ${currentDate != null}');
+      print('- noteControllers has key: ${noteControllers.containsKey(currentDate)}');
+      print('- checklistItems has key: ${checklistItems.containsKey(currentDate)}');
+      print('- newChecklistInput has key: ${newChecklistInput.containsKey(currentDate)}');
+    });
   }
 
   List<DateTime> _generateDateRange(DateTime start, DateTime end) {
@@ -51,8 +82,8 @@ class _DailyItineraryScreenState extends State<DailyItineraryScreen> {
     return days;
   }
 
-  void _loadExistingData() async {
-    if (uid == null) return;
+  Future<void> _loadExistingData() async {
+    if (uid == null || widget.tripId.trim().isEmpty) return;
     final tripDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -63,22 +94,23 @@ class _DailyItineraryScreenState extends State<DailyItineraryScreen> {
     if (data != null && data['dailyItinerary'] != null) {
       final itinerary = Map<String, dynamic>.from(data['dailyItinerary']);
       itinerary.forEach((dateStr, entry) {
-        final date = DateTime.parse(dateStr);
-        if (travelDays.contains(date)) {
+        final date = DateTime.tryParse(dateStr);
+        if (date != null && travelDays.contains(date)) {
           noteControllers[date]?.text = entry['notes'] ?? '';
           checklistItems[date] = List<String>.from(entry['checklist'] ?? []);
         }
       });
-      setState(() {});
     }
   }
 
   Future<void> _saveToFirestore(DateTime date) async {
-    if (uid == null || widget.tripId.isEmpty) return;
+    if (uid == null || widget.tripId.trim().isEmpty) {
+      print('⚠️ Cannot save — Missing UID or Trip ID.');
+      return;
+    }
 
     final note = noteControllers[date]?.text ?? '';
     final checklist = checklistItems[date] ?? [];
-
     final formattedDate = DateFormat('yyyy-MM-dd').format(date);
 
     final tripRef = FirebaseFirestore.instance
@@ -87,25 +119,42 @@ class _DailyItineraryScreenState extends State<DailyItineraryScreen> {
         .collection('trips')
         .doc(widget.tripId);
 
-    await tripRef.set({
-      'dailyItinerary': {
-        formattedDate: {
-          'notes': note,
-          'checklist': checklist,
+    try {
+      await tripRef.set({
+        'dailyItinerary': {
+          formattedDate: {
+            'notes': note,
+            'checklist': checklist,
+          }
         }
-      }
-    }, SetOptions(merge: true));
+      }, SetOptions(merge: true));
+
+      print('✅ Saved itinerary for $formattedDate');
+    } catch (e) {
+      print('❌ Error saving itinerary: $e');
+    }
   }
 
   @override
   void dispose() {
     noteControllers.values.forEach((c) => c.dispose());
     newChecklistInput.values.forEach((c) => c.dispose());
+    selectedDayIndex = 0;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!isReady || uid == null ||
+        !noteControllers.containsKey(travelDays[selectedDayIndex]) ||
+        !checklistItems.containsKey(travelDays[selectedDayIndex]) ||
+        !newChecklistInput.containsKey(travelDays[selectedDayIndex])) {
+      return Scaffold(
+        appBar: AppBar(title: Text("Trip to ${widget.tripTitle}")),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final selectedDate = travelDays[selectedDayIndex];
     final formatter = DateFormat('EEE, MMM d');
 
@@ -195,11 +244,11 @@ class _DailyItineraryScreenState extends State<DailyItineraryScreen> {
                             IconButton(
                               icon: const Icon(Icons.add_circle, color: Colors.teal, size: 32),
                               onPressed: () {
-                                final text = newChecklistInput[selectedDate]!.text.trim();
-                                if (text.isNotEmpty) {
+                                final text = newChecklistInput[selectedDate]?.text.trim();
+                                if (text != null && text.isNotEmpty) {
                                   setState(() {
-                                    checklistItems[selectedDate]!.add(text);
-                                    newChecklistInput[selectedDate]!.clear();
+                                    checklistItems[selectedDate]?.add(text);
+                                    newChecklistInput[selectedDate]?.clear();
                                   });
                                 }
                               },

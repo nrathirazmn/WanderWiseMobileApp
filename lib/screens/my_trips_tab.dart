@@ -77,19 +77,19 @@ class MyTripsTab extends StatelessWidget {
                       leading: const Icon(Icons.checklist),
                       title: Text("Checklist Items: $checklistCount"),
                     ),
-                  if (guides.isEmpty)
-                    const ListTile(
-                      title: Text('No guides added yet.'),
-                    )
-                  else
-                    ...guides.map((url) => ListTile(
-                          leading: const Icon(Icons.picture_as_pdf),
-                          title: const Text('Download Guide'),
-                          onTap: () {
-                            final uri = Uri.parse(url);
-                            launchUrl(uri, mode: LaunchMode.externalApplication);
-                          },
-                        )),
+                  // if (guides.isEmpty)
+                  //   const ListTile(
+                  //     title: Text('No guides added yet.'),
+                  //   )
+                  // else
+                  //   ...guides.map((url) => ListTile(
+                  //         leading: const Icon(Icons.picture_as_pdf),
+                  //         title: const Text('Download Guide'),
+                  //         onTap: () {
+                  //           final uri = Uri.parse(url);
+                  //           launchUrl(uri, mode: LaunchMode.externalApplication);
+                  //         },
+                  //       )),
                   ListTile(
                     leading: const Icon(Icons.arrow_forward_ios),
                     title: const Text('View Full Trip Details'),

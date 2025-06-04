@@ -42,16 +42,18 @@ class _ConverterScreenState extends State<ConverterScreen> {
     }
   }
 
-  Future<void> _convert() async {
-    final input = double.tryParse(_amountController.text.trim());
-    if (input == null || input == 0) {
-      setState(() {
-        _converted = null;
-        _rate = null;
-        _apiError = null;
-      });
-      return;
-    }
+Future<void> _convert() async {
+  final input = double.tryParse(_amountController.text.trim());
+
+  if (input == null || input <= 0) { // disallow 0 and negative
+    setState(() {
+      _converted = null;
+      _rate = null;
+      _apiError = 'Please enter a valid amount.';
+    });
+    return;
+  }
+
 
     if (_from == _to) {
       setState(() {
@@ -182,7 +184,18 @@ class _ConverterScreenState extends State<ConverterScreen> {
 
                         SizedBox(width: 24),
 
-                        Image.asset('assets/BrownArrow.png', height: 40, width: 40),
+                          IconButton(
+                            icon: Icon(Icons.swap_horiz, size: 32, color: Colors.brown),
+                            tooltip: 'Swap currencies',
+                            onPressed: () {
+                              setState(() {
+                                final temp = _from;
+                                _from = _to;
+                                _to = temp;
+                              });
+                              _convert();
+                            },
+                          ),
                         
 
                         SizedBox(width: 24),

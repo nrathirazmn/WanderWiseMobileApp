@@ -1,3 +1,4 @@
+// (Updated ProfileScreen with real-time gradient updates from Firestore)
 import 'dart:ui';
 import 'dart:convert';
 import 'dart:io';
@@ -25,19 +26,27 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   final user = FirebaseAuth.instance.currentUser;
   late TabController _tabController;
   Map<String, dynamic>? userData;
+  List<Color> headerGradient = [
+    Color.fromARGB(255, 255, 95, 109),
+    Color.fromARGB(255, 255, 195, 113),
+  ];
+
+  final Map<String, List<Color>> themes = {
+    'Coral Crush': [Color(0xFFFF5F6D), Color(0xFFFFC371)],
+    'Aqua Pop': [Color(0xFF00F260), Color(0xFF0575E6)],
+    'Sand & Sea': [Color(0xFFFFE259), Color(0xFFFFA751)],
+  };
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _fetchUserData();
-  }
-
-  void _fetchUserData() async {
-    if (user == null) return;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
-    setState(() {
-      userData = doc.data();
+    FirebaseFirestore.instance.collection('users').doc(user!.uid).snapshots().listen((doc) {
+      setState(() {
+        userData = doc.data();
+        final themeKey = userData?['headerGradient'] ?? 'Coral Crush';
+        headerGradient = themes[themeKey] ?? headerGradient;
+      });
     });
   }
 
@@ -66,227 +75,45 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({
           'photoUrl': downloadUrl,
         });
-
-        setState(() {
-          userData?['photoUrl'] = downloadUrl;
-        });
       } else {
         print('Upload failed: ${result.body}');
       }
     }
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  Stream<QuerySnapshot> _getGuides() {
-    return FirebaseFirestore.instance
-        .collection('forum_posts')
-        .where('author', isEqualTo: user?.email ?? '')
-        .snapshots();
-  }
-
-Stream<QuerySnapshot> _getLiked() {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
-  return FirebaseFirestore.instance
-      .collection('forum_posts')
-      .where('likes', arrayContains: uid)
-      .snapshots();
-}
-
-Widget _buildPostCard(Map<String, dynamic> data, String postId, {bool isLikedTab = false}) {
-  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-  final hasLiked = data['likes']?.contains(uid) ?? false;
-
-  return InkWell(
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PostDetailsScreen(postId: postId),
-        ),
-      );
-    },
-    child: Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.grey[100],
-      ),
-      child: ListTile(
-        leading: (data['imageUrl'] != null && data['imageUrl'].toString().startsWith('http'))
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(data['imageUrl'], width: 56, height: 56, fit: BoxFit.cover),
-              )
-            : const Icon(Icons.image),
-        title: Text(data['title'] ?? 'Untitled'),
-        subtitle: Text(data['author'] ?? 'Unknown'),
-        trailing: IconButton(
-          icon: Icon(
-            hasLiked ? Icons.favorite : Icons.favorite_border,
-            color: Colors.redAccent,
-          ),
-          onPressed: () async {
-            final ref = FirebaseFirestore.instance.collection('forum_posts').doc(postId);
-            await ref.update({
-              'likes': FieldValue.arrayRemove([uid])
-            });
-          },
+  void _showGradientPicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: themes.entries.map((entry) {
+            final name = entry.key;
+            final colors = entry.value;
+            return ListTile(
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: colors),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              title: Text(name),
+              onTap: () async {
+                Navigator.pop(context);
+                await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({
+                  'headerGradient': name,
+                });
+              },
+            );
+          }).toList(),
         ),
       ),
-    ),
-  );
-}
-  Widget _buildPostList(Stream<QuerySnapshot> stream, {bool isGuide = false}) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: stream,
-      builder: (ctx, AsyncSnapshot<QuerySnapshot> snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snap.hasData || snap.data!.docs.isEmpty) {
-          return Center(child: Text('No posts found.', style: TextStyle(color: Colors.grey)));
-        }
-
-        final items = snap.data!.docs;
-        return ListView.builder(
-          padding: const EdgeInsets.only(top: 8),
-          itemCount: items.length,
-          shrinkWrap: true,
-          physics: const AlwaysScrollableScrollPhysics(),
-          itemBuilder: (ctx, i) {
-            final post = items[i].data() as Map<String, dynamic>;
-            final postId = items[i].id;
-
-          return _buildPostCard(post, postId, isLikedTab: true);
-          },
-        );
-      },
     );
   }
-
-  // Widget _buildPostCard(Map<String, dynamic> data, String postId, bool isGuide) {
-  //   final user = FirebaseAuth.instance.currentUser;
-  //   final uid = user?.uid ?? '';
-  //   final hasLiked = data['likes']?.contains(uid) ?? false;
-  //   final hasSaved = data['saves']?.contains(uid) ?? false;
-
-  //   Future<void> toggleField(String field, bool currentState) async {
-  //     final uid = FirebaseAuth.instance.currentUser?.uid;
-  //     if (uid == null) return;
-  //     final ref = FirebaseFirestore.instance.collection('forum_posts').doc(postId);
-  //     await ref.update({
-  //       field: currentState
-  //           ? FieldValue.arrayRemove([uid])
-  //           : FieldValue.arrayUnion([uid]),
-  //     });
-  //   }
-
-  //   return InkWell(
-  //     onTap: isGuide
-  //         ? () {
-  //             Navigator.push(
-  //               context,
-  //               MaterialPageRoute(
-  //                 builder: (_) => PostDetailsScreen(postId: postId),
-  //               ),
-  //             );
-  //           }
-  //         : null,
-  //     child: Container(
-  //       width: 180,
-  //       margin: const EdgeInsets.symmetric(horizontal: 10),
-  //       decoration: BoxDecoration(
-  //         borderRadius: BorderRadius.circular(10),
-  //         color: Colors.grey[200],
-  //         image: data['imageUrl'] != null && data['imageUrl'].toString().startsWith('http')
-  //             ? DecorationImage(
-  //                 image: NetworkImage(data['imageUrl']),
-  //                 fit: BoxFit.cover,
-  //               )
-  //             : null,
-  //       ),
-  //       child: Stack(
-  //         children: [
-  //           Positioned(
-  //             bottom: 0,
-  //             left: 0,
-  //             right: 0,
-  //             child: Container(
-  //               color: Colors.black.withOpacity(0.5),
-  //               padding: const EdgeInsets.all(8),
-  //               child: Column(
-  //                 crossAxisAlignment: CrossAxisAlignment.start,
-  //                 children: [
-  //                   Text(
-  //                     data['title'] ?? '',
-  //                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-  //                   ),
-  //                   isGuide
-  //                       ? Row(
-  //                           children: [
-  //                             PopupMenuButton<String>(
-  //                               onSelected: (value) async {
-  //                                 if (value == 'edit') {
-  //                                   Navigator.push(
-  //                                     context,
-  //                                     MaterialPageRoute(
-  //                                       builder: (_) => EditPostScreen(
-  //                                         postId: postId,
-  //                                         postData: data,
-  //                                       ),
-  //                                     ),
-  //                                   );
-  //                                 } else if (value == 'delete') {
-  //                                   await FirebaseFirestore.instance
-  //                                       .collection('forum_posts')
-  //                                       .doc(postId)
-  //                                       .delete();
-  //                                 }
-  //                               },
-  //                               itemBuilder: (BuildContext context) => const [
-  //                                 PopupMenuItem(value: 'edit', child: Text('Edit')),
-  //                                 PopupMenuItem(value: 'delete', child: Text('Delete')),
-  //                               ],
-  //                               icon: const Icon(Icons.more_vert, color: Colors.white),
-  //                             ),
-  //                           ],
-  //                         )
-  //                       : Row(
-  //                           children: [
-  //                             IconButton(
-  //                               icon: Icon(
-  //                                 hasLiked ? Icons.favorite : Icons.favorite_border,
-  //                                 color: Colors.redAccent,
-  //                                 size: 20,
-  //                               ),
-  //                               tooltip: hasLiked ? 'Unlike' : 'Like',
-  //                               onPressed: () => toggleField('likes', hasLiked),
-  //                             ),
-  //                             IconButton(
-  //                               icon: Icon(
-  //                                 hasSaved ? Icons.bookmark : Icons.bookmark_border,
-  //                                 color: Colors.blueAccent,
-  //                                 size: 20,
-  //                               ),
-  //                               tooltip: hasSaved ? 'Remove from saved' : 'Save',
-  //                               onPressed: () => toggleField('saves', hasSaved),
-  //                             ),
-  //                           ],
-  //                         ),
-  //                 ],
-  //               ),
-  //             ),
-  //           )
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -302,57 +129,60 @@ Widget _buildPostCard(Map<String, dynamic> data, String postId, {bool isLikedTab
     return Scaffold(
       body: Column(
         children: [
-          const SizedBox(height: 40),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.more_vert),
-                onPressed: () => _showBottomMenu(context),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.only(top: 60, bottom: 30),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: headerGradient,
               ),
-            ],
-          ),
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.teal.shade100,
-                backgroundImage: (photoUrl != null && photoUrl.startsWith('http'))
-                    ? NetworkImage(photoUrl)
-                    : null,
-                child: (photoUrl == null || !photoUrl.startsWith('http'))
-                    ? Text(displayName.isNotEmpty ? displayName[0] : '?', style: const TextStyle(fontSize: 40))
-                    : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.camera_alt, color: Colors.black54),
-                onPressed: _pickAndUploadProfileImage,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(displayName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(username, style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 16),
-          OutlinedButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => EditProfileScreen()));
-            },
-            child: const Text('Edit Profile'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.bookmark),
-            title: const Text("Saved Posts"),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProfileSavedPostsScreen(showSaved: true),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.more_vert, color: Colors.white),
+                      onPressed: () => _showBottomMenu(context),
+                    ),
+                  ],
                 ),
-              );
-            },
+                Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.teal.shade100,
+                      backgroundImage: (photoUrl != null && photoUrl.startsWith('http'))
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      child: (photoUrl == null || !photoUrl.startsWith('http'))
+                          ? Text(displayName.isNotEmpty ? displayName[0] : '?', style: const TextStyle(fontSize: 40))
+                          : null,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.camera_alt, color: Colors.black54),
+                      onPressed: _pickAndUploadProfileImage,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(displayName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(height: 4),
+                Text(username, style: const TextStyle(color: Colors.white70)),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white)),
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => EditProfileScreen()));
+                  },
+                  child: const Text('Edit Profile'),
+                ),
+              ],
+            ),
           ),
           if (isAdmin)
             ListTile(
@@ -387,6 +217,75 @@ Widget _buildPostCard(Map<String, dynamic> data, String postId, {bool isLikedTab
     );
   }
 
+  Stream<QuerySnapshot> _getGuides() {
+    return FirebaseFirestore.instance
+        .collection('forum_posts')
+        .where('author', isEqualTo: user?.email ?? '')
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot> _getLiked() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    return FirebaseFirestore.instance
+        .collection('forum_posts')
+        .where('likes', arrayContains: uid)
+        .snapshots();
+  }
+
+  Widget _buildPostList(Stream<QuerySnapshot> stream, {bool isGuide = false}) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: stream,
+      builder: (ctx, AsyncSnapshot<QuerySnapshot> snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snap.hasData || snap.data!.docs.isEmpty) {
+          return Center(child: Text('No posts found.', style: TextStyle(color: Colors.grey)));
+        }
+
+        final items = snap.data!.docs;
+        return ListView.builder(
+          padding: const EdgeInsets.only(top: 8),
+          itemCount: items.length,
+          shrinkWrap: true,
+          physics: const AlwaysScrollableScrollPhysics(),
+          itemBuilder: (ctx, i) {
+            final post = items[i].data() as Map<String, dynamic>;
+            final postId = items[i].id;
+
+            return InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PostDetailsScreen(postId: postId),
+                  ),
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.grey[100],
+                ),
+                child: ListTile(
+                  leading: (post['imageUrl'] != null && post['imageUrl'].toString().startsWith('http'))
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(post['imageUrl'], width: 56, height: 56, fit: BoxFit.cover),
+                        )
+                      : const Icon(Icons.image),
+                  title: Text(post['title'] ?? 'Untitled'),
+                  subtitle: Text(post['author'] ?? 'Unknown'),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showBottomMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -412,6 +311,11 @@ Widget _buildPostCard(Map<String, dynamic> data, String postId, {bool isLikedTab
                       Navigator.pop(context);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => SettingsPage()));
                     },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.palette),
+                    title: const Text('Change Header Theme'),
+                    onTap: _showGradientPicker,
                   ),
                   ListTile(
                     leading: const Icon(Icons.help_outline),

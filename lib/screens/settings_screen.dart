@@ -1,3 +1,4 @@
+// (Updated SettingsPage with gradient thumbnail preview)
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,12 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   bool _showInTravelBuddy = false;
   bool _isLoading = true;
+
+  final Map<String, List<Color>> themes = {
+    'Coral Crush': [Color(0xFFFF5F6D), Color(0xFFFFC371)],
+    'Aqua Pop': [Color(0xFF00F260), Color(0xFF0575E6)],
+    'Sand & Sea': [Color(0xFFFFE259), Color(0xFFFFA751)],
+  };
 
   @override
   void initState() {
@@ -47,6 +54,41 @@ class _SettingsPageState extends State<SettingsPage> {
     Navigator.pushNamed(context, '/update-email');
   }
 
+  void _showGradientPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: themes.entries.map((entry) {
+          return ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(colors: entry.value),
+              ),
+            ),
+            title: Text(entry.key),
+            onTap: () async {
+              final uid = FirebaseAuth.instance.currentUser?.uid;
+              if (uid != null) {
+                await FirebaseFirestore.instance.collection('users').doc(uid).update({
+                  'headerGradient': entry.key,
+                });
+              }
+              Navigator.pop(context);
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,7 +97,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               children: [
-                // Privacy Section
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text('Privacy', style: Theme.of(context).textTheme.headlineSmall),
@@ -68,7 +109,18 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const Divider(),
 
-                // Account Section
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text('Theme', style: Theme.of(context).textTheme.headlineSmall),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.color_lens),
+                  title: const Text('Change Header Gradient'),
+                  subtitle: const Text('Customize your profile header theme.'),
+                  onTap: _showGradientPicker,
+                ),
+                const Divider(),
+
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text('Account', style: Theme.of(context).textTheme.headlineSmall),
@@ -85,7 +137,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 const Divider(),
 
-                // Other Settings from Firestore (optional)
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text('Other Settings', style: Theme.of(context).textTheme.headlineSmall),
@@ -109,9 +160,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         return ListTile(
                           leading: const Icon(Icons.tune),
                           title: Text(data['title'] ?? 'No Title'),
-                          onTap: () {
-                            // Define your action here if you want
-                          },
+                          onTap: () {},
                         );
                       }).toList(),
                     );

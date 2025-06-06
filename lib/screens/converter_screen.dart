@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/save_expense_modal.dart';
+import 'itinerary_screen.dart';
 
 class ConverterScreen extends StatefulWidget {
   @override
@@ -18,7 +19,7 @@ class _ConverterScreenState extends State<ConverterScreen> {
   double? _rate;
   bool _loading = false;
   String? _apiError;
-  List<String> _trips = ['All Trips'];
+  List<Map<String, dynamic>> _tripDocs = [];
 
   final currencies = ['MYR', 'KRW', 'USD', 'JPY', 'EUR', 'SGD'];
 
@@ -37,23 +38,22 @@ class _ConverterScreenState extends State<ConverterScreen> {
           .collection('trips')
           .get();
       setState(() {
-        _trips = ['All Trips', ...snapshot.docs.map((doc) => doc.id)];
+        _tripDocs = snapshot.docs.map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>}).toList();
       });
     }
   }
 
-Future<void> _convert() async {
-  final input = double.tryParse(_amountController.text.trim());
+  Future<void> _convert() async {
+    final input = double.tryParse(_amountController.text.trim());
 
-  if (input == null || input <= 0) { // disallow 0 and negative
-    setState(() {
-      _converted = null;
-      _rate = null;
-      _apiError = 'Please enter a valid amount.';
-    });
-    return;
-  }
-
+    if (input == null || input <= 0) {
+      setState(() {
+        _converted = null;
+        _rate = null;
+        _apiError = 'Please enter a valid amount.';
+      });
+      return;
+    }
 
     if (_from == _to) {
       setState(() {
@@ -98,6 +98,79 @@ Future<void> _convert() async {
     }
   }
 
+void _showTripSelectionDialog() {
+  if (_tripDocs.isEmpty) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("No Trips Found"),
+        content: Text("You don't have any trips yet. Please create one to link this expense."),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/main', arguments: 3); // Go to Itinerary
+            },
+            child: Text("Create & Link Trip"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Cancel"),
+          ),
+        ],
+      ),
+    );
+  } else {
+    // Trips available, show only dropdown once and go straight to modal
+    String? selectedTrip;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text("Select Trip to Save Expense"),
+          content: DropdownButtonFormField(
+            isExpanded: true,
+            hint: Text("Select Trip"),
+            value: selectedTrip,
+            items: _tripDocs.map((doc) {
+              return DropdownMenuItem(
+                value: doc['id'],
+                child: Text(doc['destination'] ?? 'Unnamed Trip'),
+              );
+            }).toList(),
+            onChanged: (val) => setState(() => selectedTrip = val.toString()),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: selectedTrip == null
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      showDialog(
+                        context: context,
+                        builder: (_) => SaveExpenseModal(
+                          converted: _converted,
+                          from: _from,
+                          to: _to,
+                          amountController: _amountController,
+                          trips: [selectedTrip!],
+                        ),
+                      );
+                    },
+              child: Text("Next"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
   @override
   Widget build(BuildContext context) {
     final flags = {
@@ -110,157 +183,86 @@ Future<void> _convert() async {
     };
 
     return Scaffold(
+      backgroundColor: Color(0xFFF8F8F8),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(height: 50),
+            SizedBox(height: 30),
             Text(
               'Currency Converter',
               style: TextStyle(
-                fontSize: 28,
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
-                color: const Color.fromARGB(255, 86, 35, 1),
+                color: Colors.brown.shade800,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 8),
+            SizedBox(height: 6),
             Text(
-              'Convert your money to get real-time conversion and add expenses',
-              style: TextStyle(fontSize: 16, color: Colors.black54),
+              'Convert your money to get real-time conversion and monitor your expenses',
+              style: TextStyle(fontSize: 15, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 15),
-
-            Card(
-              shape: RoundedRectangleBorder(
+            SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
+                ],
               ),
-              elevation: 6,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Top row with FROM, arrow, TO
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // FROM currency + flag
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text("${flags[_from]}", style: TextStyle(fontSize: 32)),
-                            SizedBox(height: 8),
-                            Container(
-                              width: 80,
-                              padding: EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade400),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _from,
-                                  isExpanded: true,
-                                  onChanged: (val) {
-                                    setState(() {
-                                      _from = val!;
-                                    });
-                                    _convert();
-                                  },
-                                  items: currencies
-                                      .map((c) => DropdownMenuItem(
-                                            value: c,
-                                            child: Text(c),
-                                          ))
-                                      .toList(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        SizedBox(width: 24),
-
-                          IconButton(
-                            icon: Icon(Icons.swap_horiz, size: 32, color: Colors.brown),
-                            tooltip: 'Swap currencies',
-                            onPressed: () {
-                              setState(() {
-                                final temp = _from;
-                                _from = _to;
-                                _to = temp;
-                              });
-                              _convert();
-                            },
-                          ),
-                        
-
-                        SizedBox(width: 24),
-
-                        // TO currency + flag
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text("${flags[_to]}", style: TextStyle(fontSize: 32)),
-                            SizedBox(height: 8),
-                            Container(
-                              width: 80,
-                              padding: EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey.shade400),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _to,
-                                  isExpanded: true,
-                                  onChanged: (val) {
-                                    setState(() {
-                                      _to = val!;
-                                    });
-                                    _convert();
-                                  },
-                                  items: currencies
-                                      .map((c) => DropdownMenuItem(
-                                            value: c,
-                                            child: Text(c),
-                                          ))
-                                      .toList(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    SizedBox(height: 24),
-
-                    // Amount input below centered
-                    Container(
-                      width: 180,
-                      child: TextField(
-                        controller: _amountController,
-                        keyboardType: TextInputType.numberWithOptions(decimal: true),
-                        onChanged: (_) => _convert(),
-                        decoration: InputDecoration(
-                          labelText: "Amount",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                        ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _currencyDropdown(_from, (val) {
+                        setState(() => _from = val);
+                        _convert();
+                      }, flags),
+                      IconButton(
+                        icon: Icon(Icons.swap_horiz, size: 32, color: Colors.brown),
+                        tooltip: 'Swap currencies',
+                        onPressed: () {
+                          setState(() {
+                            final temp = _from;
+                            _from = _to;
+                            _to = temp;
+                          });
+                          _convert();
+                        },
                       ),
+                      _currencyDropdown(_to, (val) {
+                        setState(() => _to = val);
+                        _convert();
+                      }, flags),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  TextField(
+                    controller: _amountController,
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => _convert(),
+                    decoration: InputDecoration(
+                      labelText: "Amount",
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      prefixIcon: Icon(Icons.attach_money_rounded),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-
-            SizedBox(height: 15),
-
+            SizedBox(height: 25),
             _loading
                 ? CircularProgressIndicator()
                 : Text(
@@ -268,10 +270,9 @@ Future<void> _convert() async {
                     style: TextStyle(
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
-                      color: const Color.fromARGB(255, 86, 35, 1),
+                      color: Colors.brown,
                     ),
                   ),
-
             if (_rate != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -280,38 +281,23 @@ Future<void> _convert() async {
                   style: TextStyle(color: Colors.grey.shade700),
                 ),
               ),
-
             if (_apiError != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(_apiError!, style: TextStyle(color: Colors.red)),
               ),
-
-            SizedBox(height: 15),
-
+            SizedBox(height: 25),
             ElevatedButton.icon(
-              icon: Icon(Icons.add),
-              label: Text("Save as Expense"),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => SaveExpenseModal(
-                    converted: _converted,
-                    from: _from,
-                    to: _to,
-                    amountController: _amountController,
-                    trips: _trips,
-                  ),
-                );
-              },
+              icon: Icon(Icons.save_alt_rounded, color: Colors.white),
+              label: Text("Save as Expense", style: TextStyle(color: Colors.white)),
+              onPressed: _showTripSelectionDialog,
               style: ElevatedButton.styleFrom(
                 minimumSize: Size(double.infinity, 52),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                backgroundColor: Colors.brown.shade600,
               ),
             ),
-
-            SizedBox(height: 15),
-
+            SizedBox(height: 25),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -319,7 +305,7 @@ Future<void> _convert() async {
                   children: [
                     IconButton(
                       icon: Icon(Icons.description, size: 28),
-                      onPressed: () => Navigator.pushNamed(context, '/savedReports'),
+                      onPressed: () => Navigator.pushNamed(context, '/expenses-report'),
                     ),
                     SizedBox(height: 4),
                     Text('Reports', style: TextStyle(fontSize: 14)),
@@ -340,6 +326,36 @@ Future<void> _convert() async {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _currencyDropdown(String selected, Function(String) onChanged, Map<String, String> flags) {
+    return Column(
+      children: [
+        Text(flags[selected] ?? '', style: TextStyle(fontSize: 28)),
+        SizedBox(height: 4),
+        Container(
+          width: 100,
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.grey[100],
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: selected,
+              isExpanded: true,
+              onChanged: (val) => onChanged(val!),
+              items: currencies
+                  .map((c) => DropdownMenuItem(
+                        value: c,
+                        child: Text(c),
+                      ))
+                  .toList(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

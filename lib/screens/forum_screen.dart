@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'create_post_screen.dart';
 import 'post_details_screen.dart';
-import 'dart:math';
+import 'user_guide_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,25 +27,24 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserProfile();
   }
 
-Future<void> _loadUserProfile() async {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
-  if (uid == null) return;
+  Future<void> _loadUserProfile() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
 
-  final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-  final data = doc.data();
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final data = doc.data();
 
-if (data != null && mounted) {
-  setState(() {
-    _username = data['name'];
-    _age = data['age']?.toString();
-    _nationality = data['nationality'];
-    _contact = data['contact'];
-    _social = data['social'];
-    _photoUrl = data.containsKey('photoUrl') ? data['photoUrl'] : null;
-  });
-}
-
-}
+    if (data != null && mounted) {
+      setState(() {
+        _username = data['name'];
+        _age = data['age']?.toString();
+        _nationality = data['nationality'];
+        _contact = data['contact'];
+        _social = data['social'];
+        _photoUrl = data.containsKey('photoUrl') ? data['photoUrl'] : null;
+      });
+    }
+  }
 
   void _showDestinationPopup(BuildContext context) {
     final controller = TextEditingController();
@@ -137,13 +137,27 @@ if (data != null && mounted) {
     );
   }
 
-  Widget _buildSection(String title, List<DocumentSnapshot> posts) {
+  Widget _buildGuideSection(String title, List<DocumentSnapshot> posts) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              IconButton(
+                icon: const Icon(Icons.arrow_forward_ios),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UserGuidesScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
         SizedBox(
           height: 220,
@@ -198,26 +212,27 @@ if (data != null && mounted) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(data['title'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text(data['title'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text('By ${data['author'] ?? data['authorName'] ?? 'Unknown'}', style: const TextStyle(color: Colors.white)),
                     Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            hasLiked ? Icons.favorite : Icons.favorite_border,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          onPressed: () => _toggleAction(postId, 'likes', hasLiked),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            hasSaved ? Icons.bookmark : Icons.bookmark_border,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          onPressed: () => _toggleAction(postId, 'saves', hasSaved),
-                        ),
-                      ],
+                      // children: [
+                      //   IconButton(
+                      //     icon: Icon(
+                      //       hasLiked ? Icons.favorite : Icons.favorite_border,
+                      //       color: Colors.white,
+                      //       size: 20,
+                      //     ),
+                      //     onPressed: () => _toggleAction(postId, 'likes', hasLiked),
+                      //   ),
+                      //   IconButton(
+                      //     icon: Icon(
+                      //       hasSaved ? Icons.bookmark : Icons.bookmark_border,
+                      //       color: Colors.white,
+                      //       size: 20,
+                      //     ),
+                      //     onPressed: () => _toggleAction(postId, 'saves', hasSaved),
+                      //   ),
+                      // ],
                     )
                   ],
                 ),
@@ -276,80 +291,81 @@ if (data != null && mounted) {
     );
   }
 
-  Widget _buildUserCard() {
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.brown[100],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
-                radius: 35,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_username ?? 'User', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text("Age: $_age y/o"),
-                    Text("Nationality: $_nationality"),
-                    Text("Contact: $_contact"),
-                    Text("Socials: $_social"),
-                  ],
-                ),
-              )
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+//Upgrading UI - 06/06/2025 - 12:43am
+  // Widget _buildUserCard() {
+  //   return Column(
+  //     children: [
+  //       Container(
+  //         margin: const EdgeInsets.all(16),
+  //         padding: const EdgeInsets.all(16),
+  //         decoration: BoxDecoration(
+  //           color: Colors.brown[100],
+  //           borderRadius: BorderRadius.circular(12),
+  //         ),
+  //         child: Row(
+  //           children: [
+  //             CircleAvatar(
+  //               backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
+  //               radius: 35,
+  //             ),
+  //             const SizedBox(width: 16),
+  //             Expanded(
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   Text(_username ?? 'User', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+  //                   Text("Age: $_age y/o"),
+  //                   Text("Nationality: $_nationality"),
+  //                   Text("Contact: $_contact"),
+  //                   Text("Socials: $_social"),
+  //                 ],
+  //               ),
+  //             )
+  //           ],
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 
-  Widget _buildDestinationSpinBanner() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: GestureDetector(
-        onTap: () => _showDestinationPopup(context),
-        child: Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 86, 35, 1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.casino, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Not Sure on Your Next Destination?', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                    Text('Let WanderWise choose it for you or choose from your own list!', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  ],
-                ),
-              ),
-              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget _buildDestinationSpinBanner() {
+  //   return Padding(
+  //     padding: const EdgeInsets.all(16.0),
+  //     child: GestureDetector(
+  //       onTap: () => _showDestinationPopup(context),
+  //       child: Container(
+  //         padding: EdgeInsets.all(16),
+  //         decoration: BoxDecoration(
+  //           color: const Color.fromARGB(255, 86, 35, 1),
+  //           borderRadius: BorderRadius.circular(12),
+  //           border: Border.all(color: Colors.white),
+  //         ),
+  //         child: Row(
+  //           children: [
+  //             Icon(Icons.casino, color: Colors.white),
+  //             SizedBox(width: 12),
+  //             Expanded(
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   Text('Not Sure on Your Next Destination?', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+  //                   Text('Let WanderWise choose it for you or choose from your own list!', style: TextStyle(color: Colors.white70, fontSize: 12)),
+  //                 ],
+  //               ),
+  //             ),
+  //             Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar( 
-        automaticallyImplyLeading: false, //to remove the backbutton
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
         title: Row(
@@ -371,19 +387,18 @@ if (data != null && mounted) {
             builder: (context) => IconButton(
               icon: const Icon(Icons.message, color: Colors.black),
               onPressed: () {
-                print('🧭 Navigating to /messages');
                 Navigator.pushNamed(context, '/messages');
               },
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => CreatePostScreen()));
-        },
-        child: const Icon(Icons.add),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     Navigator.push(context, MaterialPageRoute(builder: (_) => CreatePostScreen()));
+      //   },
+      //   child: const Icon(Icons.add),
+      // ),
       body: StreamBuilder(
         stream: FirebaseFirestore.instance.collection('forum_posts').snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -393,12 +408,156 @@ if (data != null && mounted) {
             (d.data() as Map<String, dynamic>)['isDraft'] == false &&
             ['guide', 'explore'].contains((d.data() as Map<String, dynamic>)['category'])
           ).toList();
+
+      Widget _buildHeroBanner() {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: [Colors.orange.shade200, Colors.pink.shade100],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("🌴 Ready for your next adventure?",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black)),
+              const SizedBox(height: 8),
+              Text("Let WanderWise guide your journey.",
+                style: TextStyle(color: Colors.grey[800])),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () => _showDestinationPopup(context),
+                icon: Icon(Icons.explore, color: Colors.white,),
+                label: Text("Inspire Me", style: TextStyle(color: Colors.white),),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.brown.shade700),
+              )
+            ],
+          ),
+        );
+      }
+
+        Widget _buildDailyQuote() {
+          final quotes = [
+            "“Life is short and the world is wide.” 🌎",
+            "“Adventure is out there!” 🧭",
+            "“Pack light, travel far.” ✈️",
+            "“The journey is the reward.” 🚶"
+          ];
+          final quote = quotes[DateTime.now().day % quotes.length];
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              quote,
+              style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+
+        Widget _buildQuickActions(BuildContext context) {
+  final actions = [
+    {
+      'icon': Icons.menu_book_rounded,
+      'title': 'User Guides',
+      'subtitle': 'Explore guides & experiences',
+      'color': Colors.blue.shade100,
+      'onTap': () => Navigator.pushNamed(context, '/user-guide-page'),
+    },
+    {
+      'icon': Icons.favorite,
+      'title': 'Travel Buddy',
+      'subtitle': 'Find & match with others',
+      'color': Colors.yellow.shade100,
+      'onTap': () => Navigator.pushNamed(context, '/main', arguments: 2),
+    },
+    {
+      'icon': Icons.add_box_rounded,
+      'title': 'Create Guide',
+      'subtitle': 'Share your own journey',
+      'color': Colors.purple.shade100,
+      'onTap': () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => CreatePostScreen()),
+          ),
+    },
+    {
+      'icon': Icons.bar_chart,
+      'title': 'Expenses Report',
+      'subtitle': 'View your spending insights',
+      'color': Colors.orange.shade100,
+      'onTap': () => Navigator.pushNamed(context, '/expenses-report'),
+    },
+  ];
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        const Text(
+          'Quick Actions',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        GridView.count(
+          shrinkWrap: true,
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          physics: NeverScrollableScrollPhysics(),
+          childAspectRatio: 1.1,
+          children: actions.map((item) {
+            return GestureDetector(
+              onTap: item['onTap'] as VoidCallback,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: item['color'] as Color,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(item['icon'] as IconData, size: 28, color: Colors.brown[700]),
+                    const SizedBox(height: 12),
+                    Text(
+                      item['title'] as String,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item['subtitle'] as String,
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    ),
+  );
+}
+
           return ListView(
             children: [
+              _buildHeroBanner(),
               _buildAIChatBanner(),
-              _buildUserCard(),
-              _buildDestinationSpinBanner(),
-              _buildSection("📒 User Guide and Experience", guides),
+              // _buildUserCard(),
+              // _buildDestinationSpinBanner(),
+              _buildDailyQuote(),
+              // _buildGuideSection("📒 User Guide and Experience", guides),
+              _buildQuickActions(context),
+
             ],
           );
         },
@@ -406,8 +565,3 @@ if (data != null && mounted) {
     );
   }
 }
-
-
-
-
-

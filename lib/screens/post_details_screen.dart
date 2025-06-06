@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'trip_details_screen.dart';
 
 class PostDetailsScreen extends StatefulWidget {
   final String postId;
@@ -28,6 +30,17 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     }
 
     await ref.update({field: updatedList});
+  }
+
+  void _showFullImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: InteractiveViewer(
+          child: Image.network(imageUrl),
+        ),
+      ),
+    );
   }
 
   Future<void> _showTripSaveDialog(String guideUrl) async {
@@ -134,68 +147,48 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Cancel'),
                 ),
-              ElevatedButton(
-                onPressed: () async {
-                  print('🟡 Save Trip Button Pressed');
-                  if (selectedTripId != null && selectedTripId!.trim().isNotEmpty) {
-                    print('🔁 Saving to existing trip: $selectedTripId');
-
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(uid)
-                        .collection('trips')
-                        .doc(selectedTripId)
-                        .update({
-                      'embeddedGuides': FieldValue.arrayUnion(
-                          guideUrl.isNotEmpty ? [guideUrl] : []),
-                    });
-
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Guide added to existing trip!')),
-                    );
-
-                    Navigator.pushNamed(context, '/trip-details', arguments: selectedTripId);
-                  } else if (newTripName.trim().isNotEmpty) {
-                    if (startDate == null || endDate == null) {
+                ElevatedButton(
+                  onPressed: () async {
+                    if (selectedTripId != null && selectedTripId!.trim().isNotEmpty) {
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(uid)
+                          .collection('trips')
+                          .doc(selectedTripId)
+                          .update({
+                        'embeddedGuides': FieldValue.arrayUnion([widget.postId]),
+                      });
+                      Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please select start and end dates.')),
+                        const SnackBar(content: Text('Guide added to existing trip!')),
                       );
-                      print('❌ Missing start or end date');
-                      return;
+                    } else if (newTripName.trim().isNotEmpty) {
+                      if (startDate == null || endDate == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please select start and end dates.')),
+                        );
+                        return;
+                      }
+
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(uid)
+                          .collection('trips')
+                          .add({
+                        'destination': newTripName.trim(),
+                        'startDate': startDate,
+                        'endDate': endDate,
+                        'embeddedGuides': [widget.postId],
+                      });
+
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('New trip created with guide!')),
+                      );
                     }
-
-                    print('🆕 Creating new trip: $newTripName');
-                    final newTripRef = await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(uid)
-                        .collection('trips')
-                        .add({
-                      'destination': newTripName.trim(),
-                      'startDate': startDate,
-                      'endDate': endDate,
-                      'embeddedGuides': guideUrl.isNotEmpty ? [guideUrl] : [],
-                      'createdAt': FieldValue.serverTimestamp(),
-                    });
-
-                    print('✅ Trip created with ID: ${newTripRef.id}');
-
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('New trip created with guide!')),
-                    );
-
-                    Navigator.pushNamed(context, '/trip-details', arguments: newTripRef.id);
-                  } else {
-                    print('❌ No trip selected or name empty');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please select or name a trip.')),
-                    );
-                  }
-                },
-                child: const Text('Save Trip'),
-              )
-
+                  },
+                  child: const Text('Save Trip'),
+                ),
               ],
             );
           },
@@ -210,6 +203,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     final uid = user?.uid ?? '';
 
     return Scaffold(
+      appBar: AppBar(),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('forum_posts')
@@ -230,68 +224,66 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           final title = postData['title'] ?? '';
           final content = postData['content'] ?? '';
           final guideDownloadUrl = postData['guideDownloadUrl'] ?? '';
-          final author = postData['author'] ?? 'Anonymous';
 
-          return Scaffold(
-            appBar: AppBar(
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (imageUrl != null && imageUrl.toString().startsWith('http'))
-                    ClipRRect(
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text('by ${postData['author'] ?? 'Anonymous'}',
+                    style: TextStyle(color: Colors.grey[600])),
+                if (timestamp.isNotEmpty)
+                  Text(timestamp,
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                const SizedBox(height: 16),
+                Text(content, style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 16),
+                if (imageUrl != null && imageUrl.toString().startsWith('http'))
+                  GestureDetector(
+                    onTap: () => _showFullImage(imageUrl),
+                    child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: Image.network(
                         imageUrl,
                         width: double.infinity,
+                        height: 220,
                         fit: BoxFit.cover,
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text('by $author',
-                      style: TextStyle(color: Colors.grey[600])),
-                  const SizedBox(height: 4),
-                  if (timestamp.isNotEmpty)
-                    Text(timestamp,
-                        style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                  const Divider(height: 32, thickness: 1),
-                  Text(content, style: const TextStyle(fontSize: 16)),
-                  const Divider(height: 32),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          likes.contains(uid)
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: Colors.red,
-                        ),
-                        onPressed: () => _toggle('likes', likes, widget.postId),
-                      ),
-                      Text('${likes.length}'),
-                      IconButton(
-                        icon: Icon(
-                          saves.contains(uid)
-                              ? Icons.bookmark
-                              : Icons.bookmark_border,
-                          color: Colors.blueGrey,
-                        ),
-                        onPressed: () async {
-                          await _toggle('saves', saves, widget.postId);
-                          _showTripSaveDialog(guideDownloadUrl);
-                        },
-                      ),
-                      Text('${saves.length}'),
-                    ],
                   ),
-                ],
-              ),
+                const SizedBox(height: 16),
+                const Divider(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        likes.contains(uid)
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: Colors.red,
+                      ),
+                      onPressed: () => _toggle('likes', likes, widget.postId),
+                    ),
+                    Text('${likes.length}'),
+                    IconButton(
+                      icon: Icon(
+                        saves.contains(uid)
+                            ? Icons.bookmark
+                            : Icons.bookmark_border,
+                        color: Colors.blueGrey,
+                      ),
+                      onPressed: () async {
+                        await _toggle('saves', saves, widget.postId);
+                        _showTripSaveDialog(guideDownloadUrl);
+                      },
+                    ),
+                    Text('${saves.length}'),
+                  ],
+                ),
+              ],
             ),
           );
         },

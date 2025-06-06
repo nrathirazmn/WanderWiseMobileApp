@@ -7,7 +7,7 @@ class SaveExpenseModal extends StatefulWidget {
   final String from;
   final String to;
   final TextEditingController amountController;
-  final List<String> trips;
+  final List<String> trips; // Should contain only 1 selected tripId
 
   const SaveExpenseModal({
     required this.converted,
@@ -23,69 +23,72 @@ class SaveExpenseModal extends StatefulWidget {
 
 class _SaveExpenseModalState extends State<SaveExpenseModal> {
   final TextEditingController _expenseNameController = TextEditingController();
-  final TextEditingController _newTripController = TextEditingController();
-  String? _selectedTrip;
+  String? _tripId;
+  String? _tripName;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.trips.isNotEmpty) {
+      _tripId = widget.trips.first;
+      _loadTripName();
+    }
+  }
+
+  Future<void> _loadTripName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && _tripId != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('trips')
+          .doc(_tripId!)
+          .get();
+
+      if (doc.exists) {
+        setState(() {
+          _tripName = doc.data()?['destination'] ?? 'Unnamed Trip';
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final currentTrips = widget.trips;
-
     return AlertDialog(
-      title: Text("Save Expense"),
+      title: const Text("Save Expense"),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: _expenseNameController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Expense Name',
                 border: OutlineInputBorder(),
               ),
             ),
-            SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Select Existing Trip (optional)',
-                border: OutlineInputBorder(),
+            const SizedBox(height: 16),
+            if (_tripName != null)
+              Row(
+                children: [
+                  const Icon(Icons.location_on, color: Colors.brown),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Linked to: $_tripName',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                    ),
+                  ),
+                ],
               ),
-              value: _selectedTrip,
-            items: [
-              ...currentTrips
-                  .where((t) => t != 'All Trips')
-                  .map((trip) => DropdownMenuItem(
-                        value: trip,
-                        child: Text(trip),
-                      )),
-              if (_selectedTrip != null &&
-                  !currentTrips.contains(_selectedTrip))
-                DropdownMenuItem(
-                  value: _selectedTrip,
-                  child: Text(_selectedTrip! + " (new)"),
-                ),
-            ],
-              onChanged: (value) => setState(() => _selectedTrip = value),
-            ),
-            SizedBox(height: 12),
-            TextField(
-              controller: _newTripController,
-              decoration: InputDecoration(
-                labelText: 'Or Create New Trip',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (value) {
-                if (value.trim().isNotEmpty) {
-                  setState(() => _selectedTrip = value.trim());
-                }
-              },
-            ),
           ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text("Cancel"),
+          child: const Text("Cancel"),
         ),
         ElevatedButton(
           onPressed: () async {
@@ -93,13 +96,12 @@ class _SaveExpenseModalState extends State<SaveExpenseModal> {
             final input = double.tryParse(widget.amountController.text.trim());
             final user = FirebaseAuth.instance.currentUser;
 
-            if (name.isEmpty || input == null || widget.converted == null || user == null) {
+            if (name.isEmpty || input == null || widget.converted == null || user == null || _tripId == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Please fill in expense name and amount.')),
+                const SnackBar(content: Text('Please fill in all required fields.')),
               );
               return;
             }
-
 
             final expenseData = {
               'name': name,
@@ -108,17 +110,9 @@ class _SaveExpenseModalState extends State<SaveExpenseModal> {
               'from': widget.from,
               'to': widget.to,
               'timestamp': Timestamp.now(),
+              'trip': _tripId,
+              'tripName': _tripName ?? 'Unnamed Trip',
             };
-
-            if (_selectedTrip != null) {
-              expenseData['trip'] = _selectedTrip;
-              await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(user.uid)
-                  .collection('trips')
-                  .doc(_selectedTrip)
-                  .set({'created': Timestamp.now()}, SetOptions(merge: true));
-            }
 
             await FirebaseFirestore.instance
                 .collection('users')
@@ -128,10 +122,10 @@ class _SaveExpenseModalState extends State<SaveExpenseModal> {
 
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Expense saved successfully')),
+              const SnackBar(content: Text('Expense saved successfully')),
             );
           },
-          child: Text("Save"),
+          child: const Text("Save"),
         ),
       ],
     );

@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'post_details_screen.dart';
 import 'trip_details_screen.dart';
 
 class MyTripsTab extends StatelessWidget {
@@ -42,10 +42,11 @@ class MyTripsTab extends StatelessWidget {
             final title = trip['destination'] ?? 'Unnamed Trip';
             final start = (trip['startDate'] as Timestamp?)?.toDate();
             final end = (trip['endDate'] as Timestamp?)?.toDate();
-            final guides = List<String>.from(trip['embeddedGuides'] ?? []);
+            final guideIds = List<String>.from(trip['embeddedGuides'] ?? []);
             final itineraryMap = Map<String, dynamic>.from(trip['dailyItinerary'] ?? {});
 
-            // Summary info
+            print("\uD83D\uDCCC Trip: $title — Embedded Guide IDs: $guideIds");
+
             String? latestNote;
             int checklistCount = 0;
             if (itineraryMap.isNotEmpty) {
@@ -77,19 +78,47 @@ class MyTripsTab extends StatelessWidget {
                       leading: const Icon(Icons.checklist),
                       title: Text("Checklist Items: $checklistCount"),
                     ),
-                  // if (guides.isEmpty)
-                  //   const ListTile(
-                  //     title: Text('No guides added yet.'),
-                  //   )
-                  // else
-                  //   ...guides.map((url) => ListTile(
-                  //         leading: const Icon(Icons.picture_as_pdf),
-                  //         title: const Text('Download Guide'),
-                  //         onTap: () {
-                  //           final uri = Uri.parse(url);
-                  //           launchUrl(uri, mode: LaunchMode.externalApplication);
-                  //         },
-                  //       )),
+                  if (guideIds.isEmpty)
+                    const ListTile(
+                      title: Text('No guides added yet.'),
+                    )
+                  else
+                    FutureBuilder<QuerySnapshot>(
+                      future: FirebaseFirestore.instance
+                          .collection('forum_posts')
+                          .where(FieldPath.documentId, whereIn: guideIds)
+                          .get(),
+                      builder: (context, guideSnapshot) {
+                        if (guideSnapshot.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        final guides = guideSnapshot.data?.docs ?? [];
+                        print("\uD83D\uDCD9 Found \${guides.length} guides for trip '\$title'");
+
+                        return Column(
+                          children: guides.map((doc) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            final guideTitle = data['title'] ?? 'Untitled Guide';
+                            print("\uD83D\uDD17 Guide loaded: \${doc.id} — Title: \$guideTitle");
+
+                            return ListTile(
+                              leading: const Icon(Icons.book),
+                              title: Text(guideTitle),
+                              subtitle: const Text("Tap to view guide"),
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PostDetailsScreen(postId: doc.id),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
                   ListTile(
                     leading: const Icon(Icons.arrow_forward_ios),
                     title: const Text('View Full Trip Details'),

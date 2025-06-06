@@ -25,58 +25,63 @@ class ExpenseListScreen extends StatelessWidget {
 
           final docs = snapshot.data!.docs;
 
-          // Group expenses by trip
+          // Group expenses by trip name
           final Map<String, List<QueryDocumentSnapshot>> grouped = {};
           for (var doc in docs) {
             final data = doc.data() as Map<String, dynamic>;
-            final trip = data['trip'] ?? 'No Trip';
-            if (!grouped.containsKey(trip)) {
-              grouped[trip] = [];
-            }
-            grouped[trip]!.add(doc);
+            final tripName = (data['tripName'] ?? 'Unlinked Expenses').toString();
+            grouped.putIfAbsent(tripName, () => []).add(doc);
           }
 
           return ListView(
             children: grouped.entries.map((entry) {
-              final trip = entry.key;
+              final tripName = entry.key;
               final expenses = entry.value;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    child: Text(
-                      trip,
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
-                    ),
-                  ),
-                  ...expenses.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    return ListTile(
-                      title: Text(data['name']),
-                      subtitle: Text(
-                        "${data['amount']} ${data['from']} → ${data['converted'].toStringAsFixed(2)} ${data['to']}",
-                      ),
-                      trailing: data['timestamp'] != null
-                          ? Text(
-                              (data['timestamp'] as Timestamp)
-                                  .toDate()
-                                  .toLocal()
-                                  .toString()
-                                  .split(' ')[0],
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
-                            )
-                          : null,
-                    );
-                  }).toList(),
-                  Divider(thickness: 1),
-                ],
-              );
+              return _buildTripSection(tripName, expenses);
             }).toList(),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildTripSection(String title, List<QueryDocumentSnapshot> expenses) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.teal,
+            ),
+          ),
+        ),
+        ...expenses.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return ListTile(
+            title: Text(data['name'] ?? 'No Name'),
+            subtitle: Text(
+              "${data['amount']} ${data['from']} → ${data['converted']?.toStringAsFixed(2) ?? '0.00'} ${data['to']}",
+            ),
+            trailing: data['timestamp'] != null
+                ? Text(
+                    (data['timestamp'] as Timestamp)
+                        .toDate()
+                        .toLocal()
+                        .toString()
+                        .split(' ')[0],
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  )
+                : null,
+          );
+        }).toList(),
+        Divider(thickness: 1),
+      ],
     );
   }
 }

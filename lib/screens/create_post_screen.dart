@@ -84,10 +84,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       guideUrl = await _uploadToCloudinary(_selectedGuide!, 'travel_guides/');
     }
 
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final userData = userDoc.data();
+    final authorName = userData?['name'] ?? user.displayName ?? user.email ?? 'Anonymous';
+
+
     final post = {
       'title': _titleController.text.trim(),
       'content': _contentController.text.trim(),
-      'author': user.displayName?.isNotEmpty == true ? user.displayName : user.email ?? 'Anonymous',
+      'author': authorName,
+      'authorId': user.uid,
       'likes': [],
       'saves': [],
       'timestamp': FieldValue.serverTimestamp(),

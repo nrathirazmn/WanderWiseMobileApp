@@ -23,6 +23,10 @@ import 'screens/update_email_screen.dart';
 import 'screens/change_pass_screen.dart';
 import 'screens/trip_details_screen.dart';
 import 'screens/daily_itinerary_screen.dart';
+import 'screens/reports_screen.dart';
+import 'screens/user_guide_screen.dart';
+import 'screens/create_post_screen.dart';
+import 'screens/post_details_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +48,11 @@ class TravelBuddyApp extends StatelessWidget {
       ),
       home: LandingPage(),
       routes: {
+        '/main': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final initialIndex = args is int ? args : 0;
+          return MainNavigation(initialIndex: initialIndex);
+        },
         '/admin-update': (context) => AdminUpdateScreen(),
         '/landingpage': (context) => LandingPage(),
         '/trip-details': (context) {
@@ -83,11 +92,24 @@ class TravelBuddyApp extends StatelessWidget {
         '/update-email': (_) => UpdateEmailScreen(),
         '/welcome': (context) => WelcomeScreen(userName: ''),
         '/register': (context) => RegisterScreen(),
-        '/main': (context) => MainNavigation(),
-        '/itinerary': (context) => ItineraryScreen(),
+        '/itinerary': (context) => MainNavigation(initialIndex: 3),
         '/home': (context) => HomeScreen(),
         '/messages': (context) => MessageScreen(),
+        '/post-details': (context) {
+          final postId = ModalRoute.of(context)?.settings.arguments as String?;
+          if (postId == null || postId.isEmpty) {
+            return Scaffold(
+              appBar: AppBar(title: Text('Error')),
+              body: Center(child: Text('Post ID is missing')),
+            );
+          }
+          return PostDetailsScreen(postId: postId);
+        },
+        '/user-guide': (context) => UserGuidesScreen(),
         '/expenses': (context) => ExpenseListScreen(),
+        '/expenses-report': (context) => ReportsScreen(),
+        '/create-post': (context) => CreatePostScreen (),
+        '/user-guide-page': (context) => UserGuidesScreen(),
         '/chat': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
           final isAI = args['isAI'] ?? false;
@@ -113,12 +135,15 @@ class TravelBuddyApp extends StatelessWidget {
 }
 
 class MainNavigation extends StatefulWidget {
+  final int initialIndex;
+  const MainNavigation({this.initialIndex = 0});
+
   @override
   _MainNavigationState createState() => _MainNavigationState();
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
   static final List<Widget> _screens = [
     HomeScreen(),
@@ -127,6 +152,12 @@ class _MainNavigationState extends State<MainNavigation> {
     ItineraryScreen(),
     ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -137,30 +168,16 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          _screens[_selectedIndex],
-          if (kDebugMode && FirebaseAuth.instance.currentUser?.email == 'nrathirazmn@gmail.com')
-            Positioned(
-              bottom: 100,
-              right: 16,
-              child: FloatingActionButton(
-                backgroundColor: Colors.brown,
-                child: Icon(Icons.admin_panel_settings),
-                onPressed: () => Navigator.pushNamed(context, '/admin-update'),
-              ),
-            ),
-        ],
-      ),
+      body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
-        selectedItemColor: const Color.fromARGB(255, 86, 35, 1),
         onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color.fromARGB(255, 86, 35, 1),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Homepage'),
           BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Convert'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Travel Buddy'),
+          // BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Travel Buddy'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Itinerary'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],

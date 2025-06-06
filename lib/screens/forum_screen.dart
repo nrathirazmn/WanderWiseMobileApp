@@ -474,7 +474,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'title': 'Travel Buddy',
       'subtitle': 'Find & match with others',
       'color': Colors.yellow.shade100,
-      'onTap': () => Navigator.pushNamed(context, '/main', arguments: 2),
+      'onTap': () => Navigator.pushNamed(context, '/travel-buddy'),
     },
     {
       'icon': Icons.add_box_rounded,

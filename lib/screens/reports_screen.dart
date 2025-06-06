@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:pie_chart/pie_chart.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/cupertino.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -13,41 +15,34 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
-  DateTime? _startDate;
-  DateTime? _endDate;
   String? _selectedCurrency;
   final List<String> _currencies = ['MYR', 'KRW', 'USD', 'JPY', 'EUR', 'SGD'];
+  int _selectedMonth = DateTime.now().month;
+  int _selectedYear = DateTime.now().year;
 
   Future<List<Map<String, dynamic>>> _fetchExpenses() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return [];
 
-    Query query = FirebaseFirestore.instance
+    final snapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
-        .collection('expenses');
+        .collection('expenses')
+        .get();
 
-    if (_startDate != null) {
-      query = query.where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(_startDate!));
-    }
-    if (_endDate != null) {
-      query = query.where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(_endDate!));
-    }
-
-    final snapshot = await query.get();
     return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
   }
 
   Map<String, double> _aggregateByCurrency(List<Map<String, dynamic>> expenses) {
     final Map<String, double> totals = {};
-
     for (var exp in expenses) {
+      final date = (exp['timestamp'] as Timestamp?)?.toDate();
+      if (date == null || date.month != _selectedMonth || date.year != _selectedYear) continue;
       if (_selectedCurrency != null && exp['to'] != _selectedCurrency) continue;
-      final trip = exp['trip'] ?? 'Uncategorized';
+      final trip = exp['tripName'] ?? 'Unlinked Expenses';
       final converted = (exp['converted'] ?? 0).toDouble();
       totals[trip] = (totals[trip] ?? 0) + converted;
     }
-
     return totals;
   }
 
@@ -65,20 +60,56 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
       ),
     );
-
     await Printing.layoutPdf(onLayout: (format) async => pdf.save());
   }
 
-  Future<void> _pickDateRange() async {
-    final picked = await showDateRangePicker(
+  Future<void> _showMonthYearPicker() async {
+    int tempMonth = _selectedMonth;
+    int tempYear = _selectedYear;
+
+    final selected = await showModalBottomSheet<Map<String, int>>(
       context: context,
-      firstDate: DateTime(2022),
-      lastDate: DateTime.now(),
+      builder: (context) {
+        return Container(
+          height: 250,
+          child: Column(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: CupertinoPicker(
+                        scrollController: FixedExtentScrollController(initialItem: _selectedMonth - 1),
+                        itemExtent: 32,
+                        onSelectedItemChanged: (index) => tempMonth = index + 1,
+                        children: List.generate(12, (index) => Center(child: Text(DateFormat.MMM().format(DateTime(0, index + 1))))),
+                      ),
+                    ),
+                    Expanded(
+                      child: CupertinoPicker(
+                        scrollController: FixedExtentScrollController(initialItem: 0),
+                        itemExtent: 32,
+                        onSelectedItemChanged: (index) => tempYear = DateTime.now().year - index,
+                        children: List.generate(5, (index) => Center(child: Text((DateTime.now().year - index).toString()))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, {'month': tempMonth, 'year': tempYear}),
+                child: Text("Confirm"),
+              ),
+            ],
+          ),
+        );
+      },
     );
-    if (picked != null) {
+
+    if (selected != null) {
       setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
+        _selectedMonth = selected['month']!;
+        _selectedYear = selected['year']!;
       });
     }
   }
@@ -92,15 +123,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
         title: Text('Reports Summary', style: TextStyle(color: Colors.brown.shade800)),
         iconTheme: IconThemeData(color: Colors.brown.shade800),
         actions: [
-          IconButton(
-            icon: Icon(Icons.picture_as_pdf, color: Colors.brown.shade800),
-            onPressed: () async {
-              final expenses = await _fetchExpenses();
-              final totals = _aggregateByCurrency(expenses);
-              _exportToPDF(totals);
-            },
-            tooltip: "Export PDF",
-          )
+          // IconButton(
+          //   icon: Icon(Icons.picture_as_pdf, color: Colors.brown.shade800),
+          //   onPressed: () async {
+          //     final expenses = await _fetchExpenses();
+          //     final totals = _aggregateByCurrency(expenses);
+          //     _exportToPDF(totals);
+          //   },
+          //   tooltip: "Export PDF",
+             // )
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -113,6 +144,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
           final expenses = snapshot.data!;
           final totals = _aggregateByCurrency(expenses);
+          final totalSum = totals.values.fold(0.0, (a, b) => a + b);
+
+          final grouped = <String, Map<String, List<Map<String, dynamic>>>>{};
+          final dateFormatter = DateFormat('yyyy-MM');
+          final dayFormatter = DateFormat('yyyy-MM-dd');
+
+          for (var exp in expenses) {
+            final date = (exp['timestamp'] as Timestamp?)?.toDate();
+            if (date == null || date.month != _selectedMonth || date.year != _selectedYear) continue;
+            if (_selectedCurrency != null && exp['to'] != _selectedCurrency) continue;
+            final monthKey = dateFormatter.format(date);
+            final dayKey = dayFormatter.format(date);
+            final trip = exp['tripName'] ?? 'Unlinked Expenses';
+            grouped.putIfAbsent(monthKey, () => {});
+            final monthly = grouped[monthKey]!;
+            final label = "$trip - $dayKey";
+            monthly.putIfAbsent(label, () => []).add(exp);
+          }
 
           return ListView(
             padding: EdgeInsets.all(16),
@@ -121,19 +170,43 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   ElevatedButton.icon(
-                    onPressed: _pickDateRange,
+                    onPressed: _showMonthYearPicker,
                     icon: Icon(Icons.date_range),
-                    label: Text("Date Range"),
+                    label: Text("${DateFormat.MMM().format(DateTime(0, _selectedMonth))} $_selectedYear"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.brown.shade600,
                       foregroundColor: Colors.white,
                     ),
                   ),
-                  DropdownButton<String>(
-                    hint: Text("Currency"),
-                    value: _selectedCurrency,
-                    items: _currencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                    onChanged: (val) => setState(() => _selectedCurrency = val),
+                  PopupMenuButton<String>(
+                    tooltip: "Converted to...",
+                    onSelected: (value) {
+                      setState(() {
+                        _selectedCurrency = value == 'All' ? null : value;
+                      });
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(value: 'All', child: Text('All Currencies')),
+                      ..._currencies.map((c) => PopupMenuItem(value: c, child: Text(c))).toList(),
+                    ],
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.brown.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.currency_exchange, size: 20, color: Colors.brown.shade800),
+                          SizedBox(width: 6),
+                          Text(
+                            _selectedCurrency ?? "All",
+                            style: TextStyle(color: Colors.brown.shade800),
+                          ),
+                          Icon(Icons.arrow_drop_down, color: Colors.brown.shade800),
+                        ],
+                      ),
+                    ),
                   )
                 ],
               ),
@@ -152,10 +225,71 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ),
                 ),
               SizedBox(height: 20),
-              ...totals.entries.map((e) => ListTile(
-                    title: Text(e.key),
-                    trailing: Text("${e.value.toStringAsFixed(2)} ${_selectedCurrency ?? ''}"),
-                  )),
+              ...grouped.entries.expand((monthEntry) {
+                return monthEntry.value.entries.map((dayEntry) {
+                  final parts = dayEntry.key.split(" - ");
+                  final destination = parts[0];
+                  final date = parts.length > 1 ? parts[1] : '';
+                  final entries = dayEntry.value;
+                  final totalDaySum = entries.fold(0.0, (sum, exp) => sum + (exp['converted'] ?? 0).toDouble());
+
+                  return Card(
+                    color: Colors.white,
+                    margin: EdgeInsets.symmetric(vertical: 8),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(destination, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 2),
+                          Text(date, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                          SizedBox(height: 8),
+                          ...entries.map((exp) {
+                            final name = exp['name'] ?? 'No Name';
+                            final from = exp['from'] ?? 'MYR';
+                            final to = exp['to'] ?? 'USD';
+                            final amount = exp['amount'] ?? 0;
+                            final converted = exp['converted']?.toDouble() ?? 0.0;
+                            IconData icon = Icons.attach_money;
+                            final lowerName = name.toString().toLowerCase();
+                            if (lowerName.contains('flight')) icon = Icons.flight;
+                            else if (lowerName.contains('food') || lowerName.contains('meal')) icon = Icons.restaurant;
+                            else if (lowerName.contains('hotel') || lowerName.contains('stay')) icon = Icons.hotel;
+                            else if (lowerName.contains('transport')) icon = Icons.directions_bus;
+
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(icon, color: Colors.teal),
+                              title: Text(name),
+                              subtitle: Text("$amount $from → ${converted.toStringAsFixed(2)} $to"),
+                            );
+                          }),
+                          Divider(),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              "Subtotal: ${totalDaySum.toStringAsFixed(2)} ${_selectedCurrency ?? ''}",
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  );
+                });
+              }),
+              Divider(thickness: 1.5),
+              // Padding(
+              //   padding: const EdgeInsets.only(top: 8.0),
+              //   child: Text(
+              //     "Total Converted: ${totalSum.toStringAsFixed(2)} ${_selectedCurrency ?? ''}",
+              //     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              //     textAlign: TextAlign.center,
+              //   ),
+              // ),
             ],
           );
         },

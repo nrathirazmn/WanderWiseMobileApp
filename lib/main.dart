@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:flutter/foundation.dart';
 
 // Screens
 import 'screens/forum_screen.dart';
@@ -50,7 +50,7 @@ class TravelBuddyApp extends StatelessWidget {
       routes: {
         '/main': (context) {
           final args = ModalRoute.of(context)?.settings.arguments;
-          final initialIndex = args is int ? args : 0;
+          final initialIndex = (args is int && args >= 0 && args < 4) ? args : 0;
           return MainNavigation(initialIndex: initialIndex);
         },
         '/admin-update': (context) => AdminUpdateScreen(),
@@ -109,6 +109,7 @@ class TravelBuddyApp extends StatelessWidget {
         '/expenses': (context) => ExpenseListScreen(),
         '/expenses-report': (context) => ReportsScreen(),
         '/create-post': (context) => CreatePostScreen (),
+        '/travel-buddy': (context) => SwipeBuddyScreen(),
         '/user-guide-page': (context) => UserGuidesScreen(),
         '/chat': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
@@ -148,7 +149,6 @@ class _MainNavigationState extends State<MainNavigation> {
   static final List<Widget> _screens = [
     HomeScreen(),
     ConverterScreen(),
-    SwipeBuddyScreen(),
     ItineraryScreen(),
     ProfileScreen(),
   ];
@@ -157,7 +157,9 @@ class _MainNavigationState extends State<MainNavigation> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    print('Initial selectedIndex: $_selectedIndex'); // 🔍 DEBUG
   }
+
 
   void _onItemTapped(int index) {
     setState(() {
@@ -177,9 +179,10 @@ class _MainNavigationState extends State<MainNavigation> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Homepage'),
           BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Convert'),
-          // BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Travel Buddy'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Itinerary'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          // BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Travel Buddy'),
+
         ],
       ),
     );

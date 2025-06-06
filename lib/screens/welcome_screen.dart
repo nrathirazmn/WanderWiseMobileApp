@@ -29,7 +29,7 @@ void savePreferenceAndContinue() async {
   if (showInBuddy) {
     Navigator.pushReplacementNamed(context, '/travelbuddy-setup');
   } else {
-    Navigator.pushReplacementNamed(context, '/main', arguments: {'selectedIndex': 2});
+    Navigator.pushReplacementNamed(context, '/main', arguments: {'selectedIndex': 1});
   }
 }
 

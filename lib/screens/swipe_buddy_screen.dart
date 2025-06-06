@@ -1,3 +1,5 @@
+// Upgraded version of SwipeBuddyScreen with enhanced UI, real-time updates, and bio preview in match modal
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +13,14 @@ class _SwipeBuddyScreenState extends State<SwipeBuddyScreen> {
   final currentUser = FirebaseAuth.instance.currentUser;
   List<DocumentSnapshot> users = [];
   int index = 0;
+  int _selectedIndex = 0;
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+    Navigator.pushReplacementNamed(context, '/main', arguments: index);
+  }
 
   @override
   void initState() {
@@ -41,6 +51,27 @@ class _SwipeBuddyScreenState extends State<SwipeBuddyScreen> {
     });
   }
 
+  Stream<List<DocumentSnapshot>> getLikedProfilesStream() async* {
+    final currentUid = currentUser?.uid;
+    if (currentUid == null) yield [];
+
+    yield* FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUid)
+        .snapshots()
+        .asyncMap((doc) async {
+          final List<dynamic> likedUids = doc.data()?['likes'] ?? [];
+          if (likedUids.isEmpty) return [];
+
+          final likedSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .where('uid', whereIn: likedUids.length > 10 ? likedUids.sublist(0, 10) : likedUids)
+              .get();
+
+          return likedSnapshot.docs;
+        });
+  }
+
   void _likeUser() async {
     if (index >= users.length) return;
 
@@ -52,87 +83,62 @@ class _SwipeBuddyScreenState extends State<SwipeBuddyScreen> {
     final myRef = FirebaseFirestore.instance.collection('users').doc(myUid);
     final likedRef = FirebaseFirestore.instance.collection('users').doc(likedUid);
 
-    await myRef.update({
-      'likes': FieldValue.arrayUnion([likedUid])
-    });
+    await myRef.update({'likes': FieldValue.arrayUnion([likedUid])});
 
     final likedSnapshot = await likedRef.get();
     List<String> likedLikes = [];
-
     if (likedSnapshot.exists && likedSnapshot.data()!.containsKey('likes')) {
       likedLikes = List<String>.from(likedSnapshot['likes']);
     }
 
     if (likedLikes.contains(myUid)) {
-      await myRef.update({
-        'matches': FieldValue.arrayUnion([likedUid])
-      });
-      await likedRef.update({
-        'matches': FieldValue.arrayUnion([myUid])
-      });
+      await myRef.update({'matches': FieldValue.arrayUnion([likedUid])});
+      await likedRef.update({'matches': FieldValue.arrayUnion([myUid])});
 
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
           title: Text("\u{1F389} It's a Match!"),
-          content: Text("You and ${data['name']} like each other!\nWould you like to send a Hi \u{1F44B} now?"),
+          content: Text("You and ${data['name']} like each other! Want to chat?"),
           actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _nextCard();
-              },
-              child: Text("Maybe Later"),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text("Later")),
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(context);
-
-                final List<String> sorted = [myUid, likedUid]..sort();
-                final chatId = "${sorted[0]}_${sorted[1]}";
-                final chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
+                final chatId = [myUid, likedUid]..sort();
+                final chatRef = FirebaseFirestore.instance.collection('chats').doc("${chatId[0]}_${chatId[1]}");
                 final messagesRef = chatRef.collection('messages');
-
                 await chatRef.set({
                   'participants': [myUid, likedUid],
-                  'lastMessage': 'Hey \u{1F44B}',
+                  'lastMessage': 'Hey 👋',
                   'lastTimestamp': FieldValue.serverTimestamp(),
                 });
-
                 await messagesRef.add({
                   'from': myUid,
-                  'text': 'Hey \u{1F44B}',
+                  'text': 'Hey 👋',
                   'timestamp': FieldValue.serverTimestamp(),
                 });
-
-                Navigator.pushNamed(
-                  context,
-                  '/chat',
-                  arguments: {
-                    'chatId': chatId,
-                    'peerId': likedUid,
-                    'peerName': data['name'],
-                    'peerPhoto': data['photoUrl'],
-                    'isAI': false,
-                  },
-                );
+                Navigator.pushNamed(context, '/chat', arguments: {
+                  'chatId': "${chatId[0]}_${chatId[1]}",
+                  'peerId': likedUid,
+                  'peerName': data['name'],
+                  'peerPhoto': data['photoUrl'],
+                  'isAI': false,
+                });
               },
-              child: Text("Yes, Send Hi \u{1F44B}"),
+              child: Text("Say Hi"),
             ),
           ],
         ),
       );
-
-      return;
+    } else {
+      _nextCard();
     }
-
-    _nextCard();
   }
 
   void _nextCard() async {
     if (index < users.length) {
-      final dislikedUser = users[index];
-      final dislikedUid = dislikedUser['uid'];
+      final dislikedUid = users[index]['uid'];
       await FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).update({
         'dislikes': FieldValue.arrayUnion([dislikedUid])
       });
@@ -142,113 +148,157 @@ class _SwipeBuddyScreenState extends State<SwipeBuddyScreen> {
     });
   }
 
-  void _showLikedProfiles() async {
-    final myDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser!.uid).get();
-    final List<dynamic> likedUids = myDoc.data()?['likes'] ?? [];
-
-    if (likedUids.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("No liked profiles yet.")));
-      return;
-    }
-
-    final likedSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .where('uid', whereIn: likedUids.length > 10 ? likedUids.sublist(0, 10) : likedUids)
-        .get();
-
-    final likedUsers = likedSnapshot.docs;
-
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) {
-        return ListView.builder(
-          itemCount: likedUsers.length,
-          itemBuilder: (_, i) {
-            final data = likedUsers[i].data() as Map<String, dynamic>;
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundImage: data['photoUrl'] != null ? NetworkImage(data['photoUrl']) : null,
-                child: data['photoUrl'] == null ? Icon(Icons.person) : null,
-              ),
-              title: Text(data['name'] ?? 'User'),
-              subtitle: Text(data['bio'] ?? 'No bio'),
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (index >= users.length) {
-      return Center(child: Text("No more travel buddies to show."));
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: Text("No more travel buddies to show.")),
+      );
     }
 
     final user = users[index];
     final data = user.data() as Map<String, dynamic>;
-    final name = data.containsKey('name') ? data['name'] : 'User';
-    final photoUrl = data.containsKey('photoUrl') ? data['photoUrl'] : null;
-    final bio = data.containsKey('bio') ? data['bio'] : 'Loves to travel!';
+    final name = data['name'] ?? 'User';
+    final photoUrl = data['photoUrl'];
+    final bio = data['bio']?.toString().trim().isNotEmpty == true ? data['bio'] : 'Loves to travel!';
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(height: 5),
-          Text('Travel Buddy', 
-            style: TextStyle(
-              fontSize: 24, 
-              fontWeight: FontWeight.bold,
-              color: const Color.fromARGB(255, 86, 35, 1),
-              )
-              ),
-          SizedBox(height: 8),
-          Text('Find your travelmate buddy here!', 
-            style: TextStyle(
-              fontSize: 14, 
-              color: Colors.black54
-              )
-              ),
-          SizedBox(height: 15),
-            TextButton.icon(
-            onPressed: _showLikedProfiles,
-            icon: Icon(Icons.people),
-            label: Text("View Liked"),
-          ),
-          SizedBox(height: 10),
-          Card(
-            elevation: 6,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: Container(
-              height: 300,
-              width: 280,
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-                    child: photoUrl == null ? Icon(Icons.person, size: 60) : null,
-                  ),
-                  SizedBox(height: 16),
-                  Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 8),
-                  Text(bio, textAlign: TextAlign.center),
-                ],
+    return Scaffold(
+      backgroundColor: Color(0xFFF9FAFB),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: Text('Travel Buddy', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            StreamBuilder<List<DocumentSnapshot>>(
+              stream: getLikedProfilesStream(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) return SizedBox.shrink();
+                final likedProfiles = snapshot.data!;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text("New Matches", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 140,
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: likedProfiles.length,
+                        itemBuilder: (context, i) {
+                          final likedData = likedProfiles[i].data() as Map<String, dynamic>;
+                          final likedName = likedData['name'] ?? 'User';
+                          final likedPhotoUrl = likedData['photoUrl'];
+                          final likedBio = likedData['bio']?.toString().trim().isNotEmpty == true ? likedData['bio'] : 'No bio available';
+
+                          return GestureDetector(
+                            onTap: () => showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: Text(likedName),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 50,
+                                      backgroundImage: likedPhotoUrl != null ? NetworkImage(likedPhotoUrl) : null,
+                                      child: likedPhotoUrl == null ? Icon(Icons.person, size: 50) : null,
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(likedBio, textAlign: TextAlign.center),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            child: Container(
+                              margin: EdgeInsets.only(right: 12),
+                              child: Column(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 40,
+                                    backgroundImage: likedPhotoUrl != null ? NetworkImage(likedPhotoUrl) : null,
+                                    child: likedPhotoUrl == null ? Icon(Icons.person, size: 35) : null,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(likedName, style: TextStyle(fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                );
+              },
+            ),
+            Text('Your next travelmate awaits...', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+            const SizedBox(height: 16),
+            Card(
+              color: Colors.white,
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                height: 300,
+                width: 280,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                      child: photoUrl == null ? const Icon(Icons.person, size: 60) : null,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text(bio, textAlign: TextAlign.center),
+                  ],
+                ),
               ),
             ),
-          ),
-          SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              FloatingActionButton(onPressed: _nextCard, child: Icon(Icons.close)),
-              FloatingActionButton(onPressed: _likeUser, child: Icon(Icons.favorite)),
-            ],
-          ),
-          SizedBox(height: 20),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                FloatingActionButton(
+                  backgroundColor: Color(0xFFFF6B6B),
+                  onPressed: _nextCard,
+                  child: const Icon(Icons.close),
+                ),
+                FloatingActionButton(
+                  backgroundColor: Color(0xFF50C878),
+                  onPressed: _likeUser,
+                  child: const Icon(Icons.favorite),
+                ),
+              ],
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Color(0xFF562301),
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Homepage'),
+          BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Convert'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Itinerary'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );

@@ -109,7 +109,7 @@ void _showTripSelectionDialog() {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/main', arguments: 3); // Go to Itinerary
+              Navigator.pushReplacementNamed(context, '/main', arguments: 2); // Go to Itinerary
             },
             child: Text("Create & Link Trip"),
           ),

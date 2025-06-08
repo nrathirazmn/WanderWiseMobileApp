@@ -50,8 +50,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final controller = TextEditingController();
     final List<String> customOptions = [];
     final List<String> defaultOptions = [
-      "Tokyo", "Bali", "Barcelona", "Seoul", "New Zealand",
-      "London", "Iceland", "Cape Town", "Paris", "Marrakech"
+      "Malaysia", "India", "China", "Japan", "South Korea",
+      "Thailand", "Vietnam", "Indonesia", "Philippines", "Singapore",
+      "United States", "Canada", "Mexico", "Brazil", "Argentina",
+      "United Kingdom", "France", "Germany", "Italy", "Spain",
+      "Australia", "New Zealand", "Russia", "South Africa", "Egypt",
+      "Turkey", "Saudi Arabia", "United Arab Emirates", "Pakistan", "Bangladesh"
     ];
     String? chosen;
     bool useCustom = false;
@@ -78,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     TextButton(
                       onPressed: () => setState(() => useCustom = true),
-                      child: Text("Choose from My List →"),
+                      child: Text("Choose from My List"),
                     ),
                   ],
                   if (useCustom && chosen == null) ...[
@@ -121,9 +125,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(chosen!, style: TextStyle(fontSize: 18, color: const Color.fromARGB(255, 86, 35, 1))),
                     SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: () => Navigator.pushNamed(context, '/itinerary'),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.pushReplacementNamed(context, '/main', arguments: 2); // Navigate to Itinerary tab
+                      },
                       child: Text('Start Planning Now'),
-                    )
+                    ),
                   ]
                 ],
               ),

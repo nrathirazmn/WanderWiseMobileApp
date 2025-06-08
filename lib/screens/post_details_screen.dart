@@ -1,32 +1,28 @@
+// [Trip Plan Tab updated to match user screenshot: day labels, checklist cards, etc. | Overview Tab now shows embedded guides | PostDetailsScreen logic enhanced: saving guides into existing or new trips with dialog]
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'trip_details_screen.dart';
 
 class PostDetailsScreen extends StatefulWidget {
   final String postId;
-
   const PostDetailsScreen({required this.postId, Key? key}) : super(key: key);
 
   @override
-  _PostDetailsScreenState createState() => _PostDetailsScreenState();
+  State<PostDetailsScreen> createState() => _PostDetailsScreenState();
 }
 
 class _PostDetailsScreenState extends State<PostDetailsScreen> {
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
     Navigator.pushReplacementNamed(context, '/main', arguments: index);
   }
 
   Future<void> _toggle(String field, List<dynamic> list, String postId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || postId.trim().isEmpty) return;
-
     final uid = user.uid;
     final ref = FirebaseFirestore.instance.collection('forum_posts').doc(postId);
 
@@ -40,13 +36,87 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     await ref.update({field: updatedList});
   }
 
+  void _saveGuideToTrip(String guideUrl) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final tripSnapshots = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('trips')
+        .get();
+
+    
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Save Guide To Trip"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...tripSnapshots.docs.map((doc) {
+                final data = doc.data();
+                return ListTile(
+
+                  
+                  leading: const Icon(Icons.folder),
+                  title: Text(data['destination'] ?? 'Unnamed Trip'),
+                  subtitle: Text((data['startDate'] as Timestamp?)?.toDate().toString().split(' ')[0] ?? ''),
+                    onTap: () async {
+                      final ref = FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(uid)
+                          .collection('trips')
+                          .doc(doc.id);
+
+                      await ref.set({
+                        'embeddedGuides': FieldValue.arrayUnion([guideUrl])
+                      }, SetOptions(merge: true));
+
+                      Navigator.pop(context);
+                      await FirebaseFirestore.instance
+                          .collection('forum_posts')
+                          .doc(guideUrl) // this is postId
+                          .update({
+                            'saves': FieldValue.arrayUnion([uid])
+                          });
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Guide saved to trip and bookmarked!")),
+                      );
+                    }
+                );
+              }).toList(),
+              const Divider(),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/createTrip', arguments: {'guideUrl': guideUrl});
+                },
+                icon: const Icon(Icons.add),
+                label: const Text("Create New Trip"),
+              )
+
+              
+            ],
+            
+          ),
+          
+        ),
+        
+      ),
+      
+    );
+  }
+
   void _showFullImage(String imageUrl) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        child: InteractiveViewer(
-          child: Image.network(imageUrl),
-        ),
+        child: InteractiveViewer(child: Image.network(imageUrl)),
       ),
     );
   }
@@ -54,11 +124,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Guide Details', style: TextStyle(fontWeight: FontWeight.bold,),
-        ),
+        title: const Text('Guide Details', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 1,
@@ -139,7 +207,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                         saves.contains(uid) ? Icons.bookmark : Icons.bookmark_border,
                         color: Colors.brown,
                       ),
-                      onPressed: () => _toggle('saves', saves, widget.postId),
+                    onPressed: () => _saveGuideToTrip(widget.postId),
                     ),
                     Text('${saves.length}'),
                     const Spacer(),

@@ -218,9 +218,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }
 
   Stream<QuerySnapshot> _getGuides() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     return FirebaseFirestore.instance
         .collection('forum_posts')
-        .where('author', isEqualTo: user?.email ?? '')
+        .where('authorId', isEqualTo: uid)
         .snapshots();
   }
 
@@ -276,7 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                         )
                       : const Icon(Icons.image),
                   title: Text(post['title'] ?? 'Untitled'),
-                  subtitle: Text(post['author'] ?? 'Unknown'),
+                  subtitle: Text(post['content'] ?? ''),
                 ),
               ),
             );

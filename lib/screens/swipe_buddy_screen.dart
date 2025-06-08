@@ -3,6 +3,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'dart:ui';
+import 'package:lottie/lottie.dart';
+import 'forum_screen.dart';
+
 
 class SwipeBuddyScreen extends StatefulWidget {
   @override
@@ -22,11 +26,29 @@ class _SwipeBuddyScreenState extends State<SwipeBuddyScreen> {
     Navigator.pushReplacementNamed(context, '/main', arguments: index);
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUsers();
+  
+
+bool isTravelBuddyActive = true; // assume true until proven otherwise
+
+@override
+void initState() {
+  super.initState();
+  _checkTravelBuddyStatus();
+  _loadUsers();
+}
+
+Future<void> _checkTravelBuddyStatus() async {
+  final currentUserDoc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(currentUser!.uid)
+      .get();
+
+  if (currentUserDoc.exists && currentUserDoc.data()?['showInTravelBuddy'] != true) {
+    setState(() => isTravelBuddyActive = false);
+    _showActivateDialog(); // show dialog immediately
   }
+}
+
 
   Future<void> _loadUsers() async {
     if (currentUser == null) return;
@@ -71,6 +93,104 @@ class _SwipeBuddyScreenState extends State<SwipeBuddyScreen> {
           return likedSnapshot.docs;
         });
   }
+
+void _showActivateDialog() {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => Stack(
+      children: [
+        BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Container(color: Colors.black.withOpacity(0.2)),
+        ),
+        AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: const [
+              Icon(Icons.travel_explore, color: Colors.brown),
+              SizedBox(width: 8),
+              Text("Travel Buddy!"),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Lottie.asset(
+                'assets/TravelBuddy.json', 
+                height: 120,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Want to connect with fellow travelers?\nEnable Travel Buddy to get started!",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+            ],
+          ),
+          actions: [
+          // ElevatedButton(
+          //   onPressed: () => Navigator.pop(context),
+          //   style: TextButton.styleFrom(
+          //     foregroundColor: Colors.brown, // text color
+          //     backgroundColor: Colors.white, // background color
+          //     side: BorderSide(color: Colors.brown), // border color
+          //     // shape: RoundedRectangleBorder(
+          //     //   borderRadius: BorderRadius.circular(8), // optional: rounded edges
+          //     // ),
+          //   ),
+          //   child: const Text("Not now"),
+          // ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: TextButton(
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(context, '/main', arguments: 0); //Going back to forumscreen
+                  },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.brown,
+                      backgroundColor: Colors.white,
+                      side: BorderSide(color: Colors.brown),
+                      // shape: RoundedRectangleBorder(
+                      //   borderRadius: BorderRadius.circular(8),
+                      // ),
+                    ),
+                    child: const Text("Not now"),
+                  ),
+                ),
+                const SizedBox(width: 12), // spacing between buttons
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(currentUser!.uid)
+                          .update({'showInTravelBuddy': true});
+                      setState(() => isTravelBuddyActive = true);
+                      Navigator.pop(context);
+                      _loadUsers();
+                    },
+                    // icon: const Icon(Icons.check, color: Colors.white),
+                    label: const Text("Enable", style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.brown,
+                      // shape: RoundedRectangleBorder(
+                      //   borderRadius: BorderRadius.circular(8),
+                      // ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 
   void _likeUser() async {
     if (index >= users.length) return;
@@ -156,6 +276,14 @@ class _SwipeBuddyScreenState extends State<SwipeBuddyScreen> {
         body: Center(child: Text("No more travel buddies to show.")),
       );
     }
+
+    if (!isTravelBuddyActive) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Travel Buddy')),
+        body: Center(child: Text('Activating Travel Buddy...')),
+      );
+    }
+
 
     final user = users[index];
     final data = user.data() as Map<String, dynamic>;

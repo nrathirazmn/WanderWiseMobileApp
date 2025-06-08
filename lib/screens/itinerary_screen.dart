@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'daily_itinerary_screen.dart';
+import 'package:lottie/lottie.dart';
 
 class ItineraryScreen extends StatefulWidget {
   @override
@@ -16,21 +17,17 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   DateTime? _endDate;
   bool _isSolo = false;
 
-  Future<void> _pickDate(BuildContext context, bool isStart) async {
+  Future<void> _pickDateRange(BuildContext context) async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final picked = await showDateRangePicker(
       context: context,
-      initialDate: now,
       firstDate: now,
       lastDate: DateTime(now.year + 5),
     );
     if (picked != null) {
       setState(() {
-        if (isStart) {
-          _startDate = picked;
-        } else {
-          _endDate = picked;
-        }
+        _startDate = picked.start;
+        _endDate = picked.end;
       });
     }
   }
@@ -78,17 +75,133 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
         print('Start Date: $_startDate');
         print('End Date: $_endDate');
 
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid == null) return;
+
+        final tripDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('trips')
+            .doc(tripId)
+            .get();
+
+        final tripData = tripDoc.data();
+        final tripTitle = tripData?['destination'] ?? 'Unnamed Trip';
+        final startDate = (tripData?['startDate'] as Timestamp?)?.toDate() ?? DateTime.now();
+        final endDate = (tripData?['endDate'] as Timestamp?)?.toDate() ?? DateTime.now().add(Duration(days: 1));
+
+        if (_isSolo) {
+          // Show dialog to ask about travel buddy
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: Colors.white.withOpacity(0.95),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Lottie.asset(
+                        'assets/TravelItinerary.json', 
+                        height: 120,
+                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Travel Buddy?",
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.brown[800]),
+                        ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "You're going solo — but would you like to meet other travelers too?",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: Colors.black87),
+                      ),
+                    ],
+                  ),
+
+                  // Icon(Icons.group, size: 48, color: Colors.brown),
+                  // const SizedBox(height: 16),
+                  // Text(
+                  //   "Travel Buddy?",
+                  //   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.brown[800]),
+                  // ),
+                  // const SizedBox(height: 12),
+                  // Text(
+                  //   "You're going solo — but would you like to meet other travelers too?",
+                  //   textAlign: TextAlign.center,
+                  //   style: TextStyle(fontSize: 14, color: Colors.black87),
+                  // ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DailyItineraryScreen(
+                                  tripId: tripId,
+                                  tripTitle: tripTitle,
+                                  startDate: startDate,
+                                  endDate: endDate,
+                                ),
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            side: BorderSide(color: Colors.brown),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: Text("No thanks", style: TextStyle(color: Colors.brown, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.pushReplacementNamed(context, '/travel-buddy');
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.brown,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          child: Text("Yes, please", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        } else {
+        // DIRECTLY navigate to itinerary
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => DailyItineraryScreen(
               tripId: tripId,
-              tripTitle: _destinationController.text.trim(),
-              startDate: _startDate ?? DateTime.now(),
-              endDate: _endDate ?? DateTime.now().add(Duration(days: 1)),
+              tripTitle: tripTitle,
+              startDate: startDate,
+              endDate: endDate,
             ),
           ),
         );
+      }
+
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -115,7 +228,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: 25),
+              const SizedBox(height: 25),
               Center(
                 child: Column(
                   children: [
@@ -124,10 +237,10 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: const Color.fromARGB(255, 86, 35, 1),
+                        color: Color.fromARGB(255, 86, 35, 1),
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       "Get your itinerary ready and plan out the whole trip",
                       textAlign: TextAlign.center,
@@ -136,65 +249,83 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                   ],
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text("Solo Trip", style: TextStyle(fontSize: 14)),
-                  Checkbox(
+                  Switch(
                     value: _isSolo,
-                    onChanged: (val) => setState(() => _isSolo = val!),
+                    onChanged: (val) => setState(() => _isSolo = val),
                   ),
                 ],
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
+              Text("Destination", style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
               Form(
                 key: _formKey,
-                child: TextFormField(
-                  controller: _destinationController,
-                  decoration: InputDecoration(
-                    labelText: "Destination",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    prefixIcon: Icon(Icons.search),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey[100],
+                    boxShadow: [
+                      BoxShadow(color: Colors.grey.shade300, blurRadius: 4, offset: Offset(0, 2))
+                    ],
                   ),
-                  validator: (val) =>
-                      val == null || val.trim().isEmpty ? "Enter a destination" : null,
+                  child: TextFormField(
+                    controller: _destinationController,
+                    decoration: InputDecoration(
+                      hintText: "Where to?",
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(16),
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    validator: (val) => val == null || val.trim().isEmpty ? "Enter a destination" : null,
+                  ),
                 ),
               ),
-              SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: Icon(Icons.date_range),
-                      label: Text(_startDate == null
-                          ? "Travel Date"
-                          : "${_startDate!.day}/${_startDate!.month}/${_startDate!.year}"),
-                      onPressed: () => _pickDate(context, true),
-                    ),
+              const SizedBox(height: 20),
+              Text("Trip Dates", style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () => _pickDateRange(context),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey[100],
+                    boxShadow: [
+                      BoxShadow(color: Colors.grey.shade300, blurRadius: 4, offset: Offset(0, 2))
+                    ],
                   ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: Icon(Icons.date_range),
-                      label: Text(_endDate == null
-                          ? "Return Date"
-                          : "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"),
-                      onPressed: () => _pickDate(context, false),
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        (_startDate == null || _endDate == null)
+                            ? "Select travel dates"
+                            : "${DateFormat('dd MMM').format(_startDate!)} - ${DateFormat('dd MMM yyyy').format(_endDate!)}",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      Icon(Icons.calendar_today, color: Colors.brown),
+                    ],
                   ),
-                ],
+                ),
               ),
-              Spacer(),
-              Center(
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _submitTrip,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12),
-                    child: Text("Save Trip"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.brown,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
+                  child: const Text("Save Trip", style: TextStyle(fontSize: 16, color: Colors.white)),
                 ),
-              )
+              ),
             ],
           ),
         ),

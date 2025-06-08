@@ -55,16 +55,16 @@ class TravelBuddyApp extends StatelessWidget {
         },
         '/admin-update': (context) => AdminUpdateScreen(),
         '/landingpage': (context) => LandingPage(),
-        '/trip-details': (context) {
-          final tripId = ModalRoute.of(context)?.settings.arguments as String?;
-          if (tripId == null || tripId.isEmpty) {
-            return Scaffold(
-              appBar: AppBar(title: Text('Error')),
-              body: Center(child: Text('Trip ID is missing')),
-            );
-          }
-          return TripDetailsScreen(tripId: tripId);
-        },
+        // '/trip-details': (context) {
+        //   final tripId = ModalRoute.of(context)?.settings.arguments as String?;
+        //   if (tripId == null || tripId.isEmpty) {
+        //     return Scaffold(
+        //       appBar: AppBar(title: Text('Error')),
+        //       body: Center(child: Text('Trip ID is missing')),
+        //     );
+        //   }
+        //   return TripDetailsScreen(tripId: tripId);
+        // },
         '/daily-itinerary': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 

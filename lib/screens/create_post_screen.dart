@@ -16,11 +16,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   File? _selectedImage;
-  File? _selectedGuide;
   bool _isUploading = false;
-  bool _isDraft = false;
-  String? _previewImageUrl;
-  String _category = 'explore';
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -28,17 +24,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (picked != null) {
       setState(() {
         _selectedImage = File(picked.path);
-        _previewImageUrl = null;
-      });
-    }
-  }
-
-  Future<void> _pickGuideFile() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery); // can switch to file picker for PDFs
-    if (picked != null) {
-      setState(() {
-        _selectedGuide = File(picked.path);
       });
     }
   }
@@ -67,182 +52,148 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
   }
 
-  void _submitPost({bool isDraft = false}) async {
+  void _submitPost() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _titleController.text.trim().isEmpty) return;
+    if (user == null || _contentController.text.trim().isEmpty) return;
 
     setState(() => _isUploading = true);
 
     String? imageUrl;
-    String? guideUrl;
-
     if (_selectedImage != null) {
       imageUrl = await _uploadToCloudinary(_selectedImage!, 'forum_photos/');
-    }
-
-    if (_selectedGuide != null) {
-      guideUrl = await _uploadToCloudinary(_selectedGuide!, 'travel_guides/');
     }
 
     final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
     final userData = userDoc.data();
     final authorName = userData?['name'] ?? user.displayName ?? user.email ?? 'Anonymous';
-
+    final authorPhoto = userData?['photoUrl'];
 
     final post = {
       'title': _titleController.text.trim(),
       'content': _contentController.text.trim(),
       'author': authorName,
+      'authorPhoto': authorPhoto,
       'authorId': user.uid,
       'likes': [],
       'saves': [],
       'timestamp': FieldValue.serverTimestamp(),
       'imageUrl': imageUrl,
-      'guideDownloadUrl': guideUrl ?? '',
-      'isDraft': isDraft,
-      'category': _category,
     };
 
     await FirebaseFirestore.instance.collection('forum_posts').add(post);
 
     setState(() => _isUploading = false);
-    Navigator.pop(context);
-  }
 
-  void _previewImage() async {
-    if (_selectedImage != null) {
-      setState(() => _isUploading = true);
-      final previewUrl = await _uploadToCloudinary(_selectedImage!, 'forum_photos/');
-      setState(() {
-        _previewImageUrl = previewUrl;
-        _isUploading = false;
-      });
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Your post has been published!'),
+        // backgroundColor: Colors.transparent,
+      ),
+    );
+
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Create Post')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Row(
+                children: const [
+                  Icon(Icons.arrow_back, color: Colors.black),
+                  SizedBox(width: 4),
+                  Text('Create Post', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            if (!_isUploading)
+              TextButton(
+                onPressed: _submitPost,
+                style: TextButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+                child: Text('Post', style: TextStyle(color: Colors.brown, fontWeight: FontWeight.w600)),
+              ),
+          ],
+        ),
+      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
-        child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_selectedImage != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.file(
-                      _selectedImage!,
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                if (_previewImageUrl != null)
-                  Column(
+                CircleAvatar(
+                  backgroundColor: Colors.brown.shade100,
+                  backgroundImage: FirebaseAuth.instance.currentUser?.photoURL != null
+                      ? NetworkImage(FirebaseAuth.instance.currentUser!.photoURL!)
+                      : null,
+                  radius: 24,
+                  child: FirebaseAuth.instance.currentUser?.photoURL == null
+                      ? Icon(Icons.person, color: Colors.white)
+                      : null,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: 16),
-                      Text('Preview Image:', style: TextStyle(fontWeight: FontWeight.bold)),
-                      SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          _previewImageUrl!,
-                          height: 200,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
+                      TextField(
+                        controller: _titleController,
+                        decoration: InputDecoration(
+                          hintText: "Post title",
+                          border: InputBorder.none,
+                        ),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      SizedBox(height: 4),
+                      TextField(
+                        controller: _contentController,
+                        maxLines: null,
+                        decoration: InputDecoration(
+                          hintText: "Share some thoughts...",
+                          border: InputBorder.none,
                         ),
                       ),
                     ],
                   ),
-                Center(
-                  child: Wrap(
-                    spacing: 12,
-                    children: [
-                      TextButton.icon(
-                        onPressed: _pickImage,
-                        icon: Icon(Icons.image),
-                        label: Text('Upload Image'),
-                      ),
-                      TextButton.icon(
-                        onPressed: _previewImage,
-                        icon: Icon(Icons.preview),
-                        label: Text('Preview'),
-                      ),
-                      TextButton.icon(
-                        onPressed: _pickGuideFile,
-                        icon: Icon(Icons.picture_as_pdf),
-                        label: Text('Upload Guide (Optional)'),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_selectedGuide != null)
-                  Text("Selected guide: ${_selectedGuide!.path.split('/').last}", style: TextStyle(color: Colors.grey[700])),
-                SizedBox(height: 16),
-                TextField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 16),
-                TextField(
-                  controller: _contentController,
-                  maxLines: 5,
-                  decoration: InputDecoration(
-                    labelText: 'Content',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _category,
-                  items: [
-                    DropdownMenuItem(value: 'explore', child: Text('Places to Explore')),
-                    DropdownMenuItem(value: 'guide', child: Text('User Guide and Experience')),
-                  ],
-                  onChanged: (value) => setState(() => _category = value!),
-                  decoration: InputDecoration(
-                    labelText: 'Category',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: _isUploading
-                      ? Center(child: CircularProgressIndicator())
-                      : Column(
-                          children: [
-                            ElevatedButton.icon(
-                              icon: Icon(Icons.send),
-                              label: Text('Post'),
-                              onPressed: () => _submitPost(isDraft: false),
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            OutlinedButton.icon(
-                              icon: Icon(Icons.save_alt),
-                              label: Text('Save as Draft'),
-                              onPressed: () => _submitPost(isDraft: true),
-                            ),
-                          ],
-                        ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                IconButton(icon: Icon(Icons.image), onPressed: _pickImage),
+                SizedBox(width: 4),
+                Text("Add Image", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 60),
+              child: Text("🌍 #TravelTips ✈️ #WanderLog 🏞 #HiddenGems", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            ),
+            if (_selectedImage != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _selectedImage!,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

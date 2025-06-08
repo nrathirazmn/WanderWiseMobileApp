@@ -91,6 +91,8 @@ flutter:
     - assets/LandingPage.json
     - assets/travelerWP.png
     - assets/BrownArrow.png
+    - assets/TravelBuddy.json
+    - assets/TravelItinerary.json
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

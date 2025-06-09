@@ -83,7 +83,75 @@ return Card(
           ),
       ],
     ),
-    // trailing: const Icon(Icons.arrow_forward_ios),
+    trailing: IconButton(
+  icon: const Icon(Icons.more_vert),
+  onPressed: () {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit Trip'),
+                onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DailyItineraryScreen(
+                      tripId: tripId,
+                      tripTitle: title,
+                      startDate: start!,
+                      endDate: end!,
+                    ),
+                  ),
+              );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete Trip'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text("Delete Trip"),
+                      content: const Text("Are you sure you want to delete this trip?"),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true) {
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user!.uid)
+                        .collection('trips')
+                        .doc(tripId)
+                        .delete();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Trip deleted')),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  },
+),
+
     onTap: () {
       Navigator.push(
         context,

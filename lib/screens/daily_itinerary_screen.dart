@@ -1,10 +1,10 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'post_details_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 
 class DailyItineraryScreen extends StatefulWidget {
   final String tripId;
@@ -20,14 +20,12 @@ class DailyItineraryScreen extends StatefulWidget {
     Key? key,
   }) : super(key: key);
 
-
   @override
   _DailyItineraryScreenState createState() => _DailyItineraryScreenState();
-
-  
 }
 
-class _DailyItineraryScreenState extends State<DailyItineraryScreen> with SingleTickerProviderStateMixin {
+class _DailyItineraryScreenState extends State<DailyItineraryScreen>
+    with SingleTickerProviderStateMixin {
   late DateTime startDate;
   late DateTime endDate;
   late List<DateTime> travelDays;
@@ -36,35 +34,32 @@ class _DailyItineraryScreenState extends State<DailyItineraryScreen> with Single
   final Map<DateTime, List<String>> checklistItems = {};
   final Map<DateTime, TextEditingController> newChecklistInput = {};
   List<String> _embeddedGuides = [];
-
-
   String? uid;
   bool isReady = false;
+  final List<String> _headerImages = [
+    'https://media.timeout.com/images/105240189/image.jpg',
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e',
+    'https://images.unsplash.com/photo-1491553895911-0055eca6402d',
+    'https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0',
+    'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1'
+  ];
+  late String _selectedHeaderImage;
 
   @override
-  void initState( ) {
-    super.initState(
-    );
-
+  void initState() {
+    super.initState();
+    _selectedHeaderImage = _headerImages[Random().nextInt(_headerImages.length)];
     Future.delayed(Duration.zero, () async {
       uid = FirebaseAuth.instance.currentUser?.uid;
-
       if (uid == null || widget.tripId.trim().isEmpty) return;
-
       startDate = widget.startDate;
       endDate = widget.endDate;
-
-      travelDays = _generateDateRange(startDate, endDate);
-
-
-
       travelDays = _generateDateRange(startDate, endDate);
       for (var date in travelDays) {
         noteControllers[date] = TextEditingController();
         checklistItems[date] = [];
         newChecklistInput[date] = TextEditingController();
       }
-
       await _loadExistingData();
       setState(() => isReady = true);
     });
@@ -100,8 +95,8 @@ class _DailyItineraryScreenState extends State<DailyItineraryScreen> with Single
       });
     }
     if (data != null && data['embeddedGuides'] != null) {
-  _embeddedGuides = List<String>.from(data['embeddedGuides']);
-}
+      _embeddedGuides = List<String>.from(data['embeddedGuides']);
+    }
   }
 
   Future<void> _saveToFirestore(DateTime date) async {
@@ -254,7 +249,7 @@ void _showEditTripDatesDialog() async {
                           width: double.infinity,
                           decoration: BoxDecoration(
                             image: DecorationImage(
-                              image: NetworkImage('https://media.timeout.com/images/105240189/image.jpg'),
+                              image: NetworkImage(_selectedHeaderImage),
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -412,127 +407,136 @@ void _showEditTripDatesDialog() async {
     );
   }
 
-  Widget _buildTripPlanTab() {
-    final selectedDate = travelDays[selectedDayIndex];
-    final formatter = DateFormat('EEE, MMM d');
+Widget _buildTripPlanTab() {
+  final selectedDate = travelDays[selectedDayIndex];
+  final formatter = DateFormat('EEE, MMM d');
 
-    return Column(
-      children: [
-        SizedBox(
-          height: 50,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: travelDays.length,
-            itemBuilder: (context, index) {
-              final day = travelDays[index];
-              final label = formatter.format(day);
-              final isSelected = index == selectedDayIndex;
-              return GestureDetector(
-                onTap: () => setState(() => selectedDayIndex = index),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isSelected ? Colors.teal : Colors.grey[300],
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Center(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.w600,
-                      ),
+  return Column(
+    children: [
+      SizedBox(height: 15),
+      SizedBox(
+        height: 50,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: travelDays.length,
+          itemBuilder: (context, index) {
+            final day = travelDays[index];
+            final label = formatter.format(day);
+            final isSelected = index == selectedDayIndex;
+            return GestureDetector(
+              onTap: () => setState(() => selectedDayIndex = index),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.brown : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Center(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Day Plan Notes", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: noteControllers[selectedDate],
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          hintText: "Write your plans or reflections here...",
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Card(
+            elevation: 3,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            child: Container(
+              padding: const EdgeInsets.all(16.0),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Day Plan Notes", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    SizedBox(height: 8),
+                    TextField(
+                      controller: noteControllers[selectedDate],
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: "Write your plans or reflections here...",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    Text("Checklist / Places", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    SizedBox(height: 8),
+                    ...checklistItems[selectedDate]!.map((item) => Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          child: ListTile(
+                            leading: const Icon(Icons.place_outlined),
+                            title: Text(item),
+                          ),
+                        )),
+                    SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: newChecklistInput[selectedDate],
+                            decoration: InputDecoration(
+                              hintText: 'Add new place or activity',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
                         ),
+                        SizedBox(width: 8),
+                        IconButton(
+                          icon: Icon(Icons.add_circle, color: Colors.brown, size: 32),
+                          onPressed: () {
+                            final text = newChecklistInput[selectedDate]?.text.trim();
+                            if (text != null && text.isNotEmpty) {
+                              setState(() {
+                                checklistItems[selectedDate]?.add(text);
+                                newChecklistInput[selectedDate]?.clear();
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    Center(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.brown,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                        ),
+                        onPressed: () async {
+                          await _saveToFirestore(selectedDate);
+                          final formatted = DateFormat('EEE, MMM d').format(selectedDate);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Saved $formatted")),
+                          );
+                        },
+                        icon: Icon(Icons.save, color: Colors.white),
+                        label: Text("Save Day", style: TextStyle(color: Colors.white)),
                       ),
-                      const SizedBox(height: 20),
-                      Text("Checklist / Places", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 8),
-                      ...checklistItems[selectedDate]!.map((item) => Card(
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            child: ListTile(
-                              leading: const Icon(Icons.place_outlined),
-                              title: Text(item),
-                            ),
-                          )),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: newChecklistInput[selectedDate],
-                              decoration: InputDecoration(
-                                hintText: 'Add new place or activity',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.add_circle, color: Colors.teal, size: 32),
-                            onPressed: () {
-                              final text = newChecklistInput[selectedDate]?.text.trim();
-                              if (text != null && text.isNotEmpty) {
-                                setState(() {
-                                  checklistItems[selectedDate]?.add(text);
-                                  newChecklistInput[selectedDate]?.clear();
-                                });
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: FloatingActionButton.extended(
-            onPressed: () async {
-              await _saveToFirestore(selectedDate);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Saved Day ${selectedDayIndex + 1}")),
-              );
-            },
-            icon: const Icon(Icons.save),
-            label: const Text("Save Day"),
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+     
+  
 
   Widget _buildBudgetTab() {
     return StreamBuilder<QuerySnapshot>(

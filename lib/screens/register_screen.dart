@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'welcome_screen.dart'; // ✅ Make sure this import exists
+import 'welcome_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -15,22 +15,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool obscurePassword = true;
   bool isLoading = false;
 
+  final emailRegex = RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$");
+
   void registerUser() async {
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (!emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter a valid email address.')),
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Password must be at least 6 characters.')),
+      );
+      return;
+    }
+
     setState(() => isLoading = true);
 
     try {
       UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
-      );
+          .createUserWithEmailAndPassword(email: email, password: password);
 
       final uid = userCredential.user!.uid;
 
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'uid': uid,
-        'name': nameController.text.trim(),
-        'email': emailController.text.trim(),
+        'name': name,
+        'email': email,
         'createdAt': FieldValue.serverTimestamp(),
         'profilePic': '',
         'showInTravelBuddy': false,
@@ -39,22 +56,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       if (!mounted) return;
-
-      // ✅ Go to WelcomeScreen with user's name
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => WelcomeScreen(userName: nameController.text.trim()),
+          builder: (_) => WelcomeScreen(userName: name),
         ),
       );
     } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Registration failed')),
-      );
+      String message = 'Registration failed';
+      if (e.code == 'email-already-in-use') {
+        message = 'This email is already registered.';
+      } else if (e.code == 'invalid-email') {
+        message = 'Invalid email format.';
+      } else if (e.code == 'weak-password') {
+        message = 'Password should be at least 6 characters.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
     } finally {
-      if (!mounted) return;
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -72,18 +96,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 alignment: Alignment.centerLeft,
                 child: IconButton(
                   icon: Icon(Icons.arrow_back),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
               SizedBox(height: 10),
               Image.asset('assets/WWlogo.png', height: 130),
               SizedBox(height: 5),
-              Text(
-                'Register',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
+              Text('Register', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
               Text(
                 "Fill up your information and you're a step away from using WanderWise",
@@ -130,7 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Password must at least have 6 characters',
+                  'Password must be at least 6 characters',
                   style: TextStyle(fontSize: 12, color: Colors.black54),
                 ),
               ),

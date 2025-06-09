@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:lottie/lottie.dart';
 import 'forum_screen.dart';
+import 'edit_travel_buddy_screen.dart';
 
 
 class SwipeBuddyScreen extends StatefulWidget {
@@ -267,6 +268,90 @@ void _showActivateDialog() {
       index = index + 1;
     });
   }
+Widget _buildMyProfileCard() {
+  final user = FirebaseAuth.instance.currentUser;
+
+  return FutureBuilder<DocumentSnapshot>(
+    future: FirebaseFirestore.instance.collection('users').doc(user?.uid).get(),
+    builder: (context, snapshot) {
+      if (!snapshot.hasData) return SizedBox.shrink();
+
+      final data = snapshot.data!.data() as Map<String, dynamic>;
+      final name = data['name'] ?? 'You';
+      final photoUrl = data['photoUrl'];
+      final bio = (data['bio'] ?? '').toString().trim().isEmpty
+          ? 'Tap to write your travel story...'
+          : data['bio'];
+
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => EditTravelBuddyScreen()),
+          );
+           setState(() {}); 
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.brown.shade50,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.brown.shade100),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.brown.shade100.withOpacity(0.3),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 34,
+                    backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                    backgroundColor: Colors.brown.shade200,
+                    child: photoUrl == null ? Icon(Icons.person, size: 34, color: Colors.white) : null,
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("👤 $name", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        SizedBox(height: 4),
+                        Text("Your Travel Buddy Profile", style: TextStyle(color: Colors.brown[700], fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios_rounded, size: 18, color: Colors.brown.shade400),
+                ],
+              ),
+              SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.brown.shade100),
+                ),
+                child: Text(
+                  bio,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -304,6 +389,7 @@ void _showActivateDialog() {
         child: Column(
           children: [
             const SizedBox(height: 10),
+            _buildMyProfileCard(),
             StreamBuilder<List<DocumentSnapshot>>(
               stream: getLikedProfilesStream(),
               builder: (context, snapshot) {
@@ -428,7 +514,11 @@ void _showActivateDialog() {
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Itinerary'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
+        
       ),
+
+      
     );
+    
   }
 }

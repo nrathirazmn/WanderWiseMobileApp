@@ -27,6 +27,7 @@ import 'screens/reports_screen.dart';
 import 'screens/user_guide_screen.dart';
 import 'screens/create_post_screen.dart';
 import 'screens/post_details_screen.dart';
+import 'screens/edit_travel_buddy_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

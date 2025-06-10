@@ -6,6 +6,9 @@ import 'daily_itinerary_screen.dart';
 import 'package:lottie/lottie.dart';
 
 class ItineraryScreen extends StatefulWidget {
+  final String? guideUrl;
+  const ItineraryScreen({Key? key, this.guideUrl}) : super(key: key);
+
   @override
   _ItineraryScreenState createState() => _ItineraryScreenState();
 }
@@ -64,8 +67,15 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
         'participants': _isSolo ? [] : [{'photoUrl': FirebaseAuth.instance.currentUser?.photoURL}],
         'createdAt': FieldValue.serverTimestamp(),
       });
+      
 
       final tripId = newTripDoc.id;
+      if (widget.guideUrl != null) {
+        await newTripDoc.set({
+          'embeddedGuides': FieldValue.arrayUnion([widget.guideUrl])
+        }, SetOptions(merge: true));
+      }
+
       await newTripDoc.update({'tripId': tripId});
 
       if (tripId.isNotEmpty) {
@@ -123,19 +133,6 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                       ),
                     ],
                   ),
-
-                  // Icon(Icons.group, size: 48, color: Colors.brown),
-                  // const SizedBox(height: 16),
-                  // Text(
-                  //   "Travel Buddy?",
-                  //   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.brown[800]),
-                  // ),
-                  // const SizedBox(height: 12),
-                  // Text(
-                  //   "You're going solo — but would you like to meet other travelers too?",
-                  //   textAlign: TextAlign.center,
-                  //   style: TextStyle(fontSize: 14, color: Colors.black87),
-                  // ),
                   const SizedBox(height: 24),
                   Row(
                     children: [
@@ -179,7 +176,6 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                           child: Text("Yes, please", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ),
-
                     ],
                   ),
                 ],
@@ -223,110 +219,121 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 25),
-              Center(
-                child: Column(
-                  children: [
-                    Text(
-                      "Plan Your Trip",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color.fromARGB(255, 86, 35, 1),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 25),
+                Center(
+                  child: Column(
+                    children: [
+                      Text(
+                        "Plan Your Trip",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromARGB(255, 86, 35, 1),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Get your itinerary ready and plan out the whole trip",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, color: Colors.black54),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Get your itinerary ready and plan out the whole trip",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text("Solo Trip", style: TextStyle(fontSize: 14)),
+                    Switch(
+                      value: _isSolo,
+                      onChanged: (val) => setState(() => _isSolo = val),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text("Solo Trip", style: TextStyle(fontSize: 14)),
-                  Switch(
-                    value: _isSolo,
-                    onChanged: (val) => setState(() => _isSolo = val),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text("Destination", style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              Form(
-                key: _formKey,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[100],
-                    boxShadow: [
-                      BoxShadow(color: Colors.grey.shade300, blurRadius: 4, offset: Offset(0, 2))
-                    ],
-                  ),
-                  child: TextFormField(
-                    controller: _destinationController,
-                    decoration: InputDecoration(
-                      hintText: "Where to?",
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.all(16),
-                      prefixIcon: Icon(Icons.search),
+                const SizedBox(height: 10),
+                Text("Destination", style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Form(
+                  key: _formKey,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey[100],
+                      boxShadow: [
+                        BoxShadow(color: Colors.grey.shade300, blurRadius: 4, offset: Offset(0, 2))
+                      ],
                     ),
-                    validator: (val) => val == null || val.trim().isEmpty ? "Enter a destination" : null,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text("Trip Dates", style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              GestureDetector(
-                onTap: () => _pickDateRange(context),
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey[100],
-                    boxShadow: [
-                      BoxShadow(color: Colors.grey.shade300, blurRadius: 4, offset: Offset(0, 2))
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        (_startDate == null || _endDate == null)
-                            ? "Select travel dates"
-                            : "${DateFormat('dd MMM').format(_startDate!)} - ${DateFormat('dd MMM yyyy').format(_endDate!)}",
-                        style: TextStyle(fontSize: 16),
+                    child: TextFormField(
+                      controller: _destinationController,
+                      decoration: InputDecoration(
+                        hintText: "Where to?",
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.all(16),
+                        prefixIcon: Icon(Icons.search),
                       ),
-                      Icon(Icons.calendar_today, color: Colors.brown),
-                    ],
+                      validator: (val) => val == null || val.trim().isEmpty ? "Enter a destination" : null,
+                    ),
                   ),
                 ),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitTrip,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.brown,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                if (widget.guideUrl != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Chip(
+                    label: Text("Guide will be embedded in this trip"),
+                    backgroundColor: Colors.brown.shade50,
+                    avatar: Icon(Icons.file_present, color: Colors.brown),
                   ),
-                  child: const Text("Save Trip", style: TextStyle(fontSize: 16, color: Colors.white)),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                Text("Trip Dates", style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: () => _pickDateRange(context),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.grey[100],
+                      boxShadow: [
+                        BoxShadow(color: Colors.grey.shade300, blurRadius: 4, offset: Offset(0, 2))
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          (_startDate == null || _endDate == null)
+                              ? "Select travel dates"
+                              : "${DateFormat('dd MMM').format(_startDate!)} - ${DateFormat('dd MMM yyyy').format(_endDate!)}",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        Icon(Icons.calendar_today, color: Colors.brown),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submitTrip,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.brown,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text("Save Trip", style: TextStyle(fontSize: 16, color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

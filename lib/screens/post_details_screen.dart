@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'itinerary_screen.dart';
 
 class PostDetailsScreen extends StatefulWidget {
   final String postId;
@@ -93,8 +94,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
               const Divider(),
               ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/createTrip', arguments: {'guideUrl': guideUrl});
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ItineraryScreen(guideUrl: guideUrl),
+                  ),
+                );                
                 },
                 icon: const Icon(Icons.add),
                 label: const Text("Create New Trip"),

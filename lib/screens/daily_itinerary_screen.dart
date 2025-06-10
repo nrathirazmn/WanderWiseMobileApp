@@ -25,7 +25,9 @@ class DailyItineraryScreen extends StatefulWidget {
 }
 
 class _DailyItineraryScreenState extends State<DailyItineraryScreen>
-    with SingleTickerProviderStateMixin {
+
+
+  with SingleTickerProviderStateMixin {
   late DateTime startDate;
   late DateTime endDate;
   late List<DateTime> travelDays;
@@ -44,6 +46,7 @@ class _DailyItineraryScreenState extends State<DailyItineraryScreen>
     'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1'
   ];
   late String _selectedHeaderImage;
+  int _selectedIndex = 2;
 
   @override
   void initState() {
@@ -298,6 +301,22 @@ void _showEditTripDatesDialog() async {
                   ],
                 ),
               ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) {
+            setState(() => _selectedIndex = index);
+            Navigator.pushReplacementNamed(context, '/main', arguments: index);
+          },
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: const Color.fromARGB(255, 86, 35, 1),
+          unselectedItemColor: Colors.grey,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Homepage'),
+            BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Convert'),
+            BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Itinerary'),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          ],
+        ),
       ),
     );
   }
@@ -398,10 +417,10 @@ void _showEditTripDatesDialog() async {
             ),
           ),
 
-          Text("Notes:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          SizedBox(height: 4),
-          Text("This trip includes some amazing places and food experiences planned ahead.",
-              style: TextStyle(fontSize: 14, color: Colors.black54)),
+          // Text("Notes:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          // SizedBox(height: 4),
+          // Text("This trip includes some amazing places and food experiences planned ahead.",
+          //     style: TextStyle(fontSize: 14, color: Colors.black54)),
         ],
       ),
     );
@@ -577,6 +596,7 @@ Widget _buildTripPlanTab() {
           ],
           
         );
+        
         
       },
     );

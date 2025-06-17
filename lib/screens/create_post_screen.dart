@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
+import 'user_guide_screen.dart';
 
 class CreatePostScreen extends StatefulWidget {
   @override
@@ -70,6 +71,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     final post = {
       'title': _titleController.text.trim(),
+      'guideTitle': _titleController.text.trim(),
       'content': _contentController.text.trim(),
       'author': authorName,
       'authorPhoto': authorPhoto,
@@ -78,6 +80,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       'saves': [],
       'timestamp': FieldValue.serverTimestamp(),
       'imageUrl': imageUrl,
+      'isDraft': false, 
+      'category': 'guide',
+
     };
 
     await FirebaseFirestore.instance.collection('forum_posts').add(post);
@@ -91,7 +96,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       ),
     );
 
-    Navigator.pop(context);
+    Navigator.pushReplacementNamed(context, '/user-guide-page');
+
   }
 
   @override

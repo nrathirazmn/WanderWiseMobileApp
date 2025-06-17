@@ -72,7 +72,7 @@ class _UserGuidesScreenState extends State<UserGuidesScreen> {
                         .collection('forum_posts')
                         .where('isDraft', isEqualTo: false)
                         .where('category', whereIn: ['guide', 'explore'])
-                        .orderBy('timestamp', descending: true)
+                        .orderBy('timestamp', descending: false)
                         .limit(1)
                         .snapshots(),
                     builder: (context, snapshot) {

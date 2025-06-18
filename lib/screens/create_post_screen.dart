@@ -53,52 +53,48 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
   }
 
-  void _submitPost() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _contentController.text.trim().isEmpty) return;
+void _submitPost() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null || _contentController.text.trim().isEmpty) return;
 
-    setState(() => _isUploading = true);
+  setState(() => _isUploading = true);
 
-    String? imageUrl;
-    if (_selectedImage != null) {
-      imageUrl = await _uploadToCloudinary(_selectedImage!, 'forum_photos/');
-    }
-
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final userData = userDoc.data();
-    final authorName = userData?['name'] ?? user.displayName ?? user.email ?? 'Anonymous';
-    final authorPhoto = userData?['photoUrl'];
-
-    final post = {
-      'title': _titleController.text.trim(),
-      'guideTitle': _titleController.text.trim(),
-      'content': _contentController.text.trim(),
-      'author': authorName,
-      'authorPhoto': authorPhoto,
-      'authorId': user.uid,
-      'likes': [],
-      'saves': [],
-      'timestamp': FieldValue.serverTimestamp(),
-      'imageUrl': imageUrl,
-      'isDraft': false, 
-      'category': 'guide',
-
-    };
-
-    await FirebaseFirestore.instance.collection('forum_posts').add(post);
-
-    setState(() => _isUploading = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Your post has been published!'),
-        // backgroundColor: Colors.transparent,
-      ),
-    );
-
-    Navigator.pushReplacementNamed(context, '/user-guide-page');
-
+  String? imageUrl;
+  if (_selectedImage != null) {
+    imageUrl = await _uploadToCloudinary(_selectedImage!, 'forum_photos/');
   }
+
+  final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+  final userData = userDoc.data();
+  final authorName = userData?['name'] ?? user.displayName ?? user.email ?? 'Anonymous';
+  final authorPhoto = userData?['photoUrl'];
+
+  final post = {
+    'title': _titleController.text.trim(),
+    'guideTitle': _titleController.text.trim(),
+    'content': _contentController.text.trim(),
+    'author': authorName,
+    'authorPhoto': authorPhoto,
+    'authorId': user.uid,
+    'likes': [],
+    'saves': [],
+    'timestamp': FieldValue.serverTimestamp(),
+    'imageUrl': imageUrl,
+    'isDraft': false, // 
+    'category': 'guide', // 
+  };
+
+  await FirebaseFirestore.instance.collection('forum_posts').add(post);
+
+  setState(() => _isUploading = false);
+
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Your post has been published!')),
+  );
+
+  Navigator.pushReplacementNamed(context, '/user-guide-page');
+}
 
   @override
   Widget build(BuildContext context) {

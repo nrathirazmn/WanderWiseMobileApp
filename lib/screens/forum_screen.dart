@@ -390,13 +390,52 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.message, color: Colors.black),
-              onPressed: () {
-                Navigator.pushNamed(context, '/messages');
-              },
-            ),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('chats')
+                .where('participants', arrayContains: FirebaseAuth.instance.currentUser?.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              bool hasUnread = false;
+
+              if (snapshot.hasData) {
+                for (var doc in snapshot.data!.docs) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final lastSender = data['lastMessageSender'];
+                  final readBy = List<String>.from(data['readBy'] ?? []);
+                  final currentUid = FirebaseAuth.instance.currentUser?.uid;
+
+                  if (lastSender != currentUid && !readBy.contains(currentUid)) {
+                    hasUnread = true;
+                    break;
+                  }
+                }
+              }
+
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.message, color: Colors.black),
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/messages');
+                    },
+                  ),
+                  if (hasUnread)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),

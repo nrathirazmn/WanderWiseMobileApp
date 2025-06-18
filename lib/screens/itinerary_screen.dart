@@ -225,6 +225,14 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (widget.guideUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12.0, left: 4.0),
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.arrow_back, color: Colors.black),
+                    ),
+                  ),
                 const SizedBox(height: 25),
                 Center(
                   child: Column(

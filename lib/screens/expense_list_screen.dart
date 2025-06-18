@@ -14,7 +14,10 @@ class ExpenseListScreen extends StatelessWidget {
         .snapshots();
 
     return Scaffold(
-      appBar: AppBar(title: Text("Saved Expenses")),
+      appBar: AppBar(
+        title: Text("Saved Expenses"),
+        backgroundColor: Colors.brown.shade100,
+        ),
       body: StreamBuilder<QuerySnapshot>(
         stream: stream,
         builder: (context, snapshot) {

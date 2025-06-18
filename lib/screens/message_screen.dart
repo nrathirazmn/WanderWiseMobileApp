@@ -80,6 +80,8 @@ class _MessageScreenState extends State<MessageScreen> {
 
                 if (otherUserId == null) return SizedBox.shrink();
 
+                final unreadCount = data['unreadCount']?[user?.uid] ?? 0;
+
                 return FutureBuilder<DocumentSnapshot>(
                   future: FirebaseFirestore.instance.collection('users').doc(otherUserId).get(),
                   builder: (context, userSnap) {
@@ -107,7 +109,24 @@ class _MessageScreenState extends State<MessageScreen> {
                           "${userData['name'] ?? 'Unknown'} from ${userData['nationality'] ?? 'Unknown'}",
                         ),
                         subtitle: Text(data['lastMessage'] ?? ''),
-                        onTap: () {
+                        trailing: unreadCount > 0
+                            ? CircleAvatar(
+                                radius: 10,
+                                backgroundColor: Colors.red,
+                                child: Text(
+                                  '$unreadCount',
+                                  style: TextStyle(color: Colors.white, fontSize: 12),
+                                ),
+                              )
+                            : null,
+                        onTap: () async {
+                          await FirebaseFirestore.instance
+                              .collection('chats')
+                              .doc(doc.id)
+                              .update({
+                            'unreadCount.${user?.uid}': 0,
+                          });
+
                           Navigator.pushNamed(
                             context,
                             '/chat',

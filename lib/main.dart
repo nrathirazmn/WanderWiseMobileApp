@@ -106,26 +106,44 @@ class TravelBuddyApp extends StatelessWidget {
           }
           return PostDetailsScreen(postId: postId);
         },
+        
         '/user-guide': (context) => UserGuidesScreen(),
         '/expenses': (context) => ExpenseListScreen(),
         '/expenses-report': (context) => ReportsScreen(),
         '/create-post': (context) => CreatePostScreen (),
         '/travel-buddy': (context) => SwipeBuddyScreen(),
         '/user-guide-page': (context) => UserGuidesScreen(),
-        '/chat': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
-          final isAI = args['isAI'] ?? false;
+        
+        // '/chat': (context) {
+        //   final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+        //   final isAI = args['isAI'] ?? false;
 
-          return isAI
-              ? ChatScreen(chatWith: args['peerName'])
-              : FirestoreChatScreen(
-                  chatId: args['chatId'],
-                  peerId: args['peerId'],
-                  peerName: args['peerName'],
-                  peerPhoto: args['peerPhoto'],
-                );
-        },
+        //   return isAI
+        //       ? ChatScreen(chatWith: args['peerName'])
+        //       : FirestoreChatScreen(
+        //           chatId: args['chatId'],
+        //           peerId: args['peerId'],
+        //           peerName: args['peerName'],
+        //           peerPhoto: args['peerPhoto'],
+        //         );
+        // },
       },
+      onGenerateRoute: (settings) {
+      if (settings.name == '/chat') {
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => FirestoreChatScreen(
+            chatId: args['chatId'],
+            peerId: args['peerId'],
+            peerName: args['peerName'],
+            peerPhoto: args['peerPhoto'],
+            // isAI: args['isAI'],
+          ),
+        );
+      }
+      return null;
+    },
+
       onUnknownRoute: (settings) => MaterialPageRoute(
         builder: (_) => Scaffold(
           appBar: AppBar(title: Text('Page Not Found')),

@@ -2,25 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class MessageScreen extends StatefulWidget {
-  @override
-  _MessageScreenState createState() => _MessageScreenState();
-}
-
-class _MessageScreenState extends State<MessageScreen> {
+class MessageScreen extends StatelessWidget {
   final user = FirebaseAuth.instance.currentUser;
-  int _selectedIndex = 0;
 
   String _getInitials(String? name) {
     if (name == null || name.trim().isEmpty) return '?';
     final parts = name.trim().split(' ');
     if (parts.length == 1) return parts[0][0].toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
-    Navigator.pushReplacementNamed(context, '/main', arguments: index);
   }
 
   @override
@@ -80,8 +69,6 @@ class _MessageScreenState extends State<MessageScreen> {
 
                 if (otherUserId == null) return SizedBox.shrink();
 
-                final unreadCount = data['unreadCount']?[user?.uid] ?? 0;
-
                 return FutureBuilder<DocumentSnapshot>(
                   future: FirebaseFirestore.instance.collection('users').doc(otherUserId).get(),
                   builder: (context, userSnap) {
@@ -109,24 +96,7 @@ class _MessageScreenState extends State<MessageScreen> {
                           "${userData['name'] ?? 'Unknown'} from ${userData['nationality'] ?? 'Unknown'}",
                         ),
                         subtitle: Text(data['lastMessage'] ?? ''),
-                        trailing: unreadCount > 0
-                            ? CircleAvatar(
-                                radius: 10,
-                                backgroundColor: Colors.red,
-                                child: Text(
-                                  '$unreadCount',
-                                  style: TextStyle(color: Colors.white, fontSize: 12),
-                                ),
-                              )
-                            : null,
-                        onTap: () async {
-                          await FirebaseFirestore.instance
-                              .collection('chats')
-                              .doc(doc.id)
-                              .update({
-                            'unreadCount.${user?.uid}': 0,
-                          });
-
+                        onTap: () {
                           Navigator.pushNamed(
                             context,
                             '/chat',
@@ -147,19 +117,6 @@ class _MessageScreenState extends State<MessageScreen> {
             ],
           );
         },
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color.fromARGB(255, 86, 35, 1),
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Homepage'),
-          BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Convert'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Itinerary'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
       ),
     );
   }

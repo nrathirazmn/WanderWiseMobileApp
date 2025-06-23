@@ -23,7 +23,7 @@ class _AdminUpdateScreenState extends State<AdminUpdateScreen> {
 
         await usersRef.doc(uid).update({
           'uid': uid,
-          'showInTravelBuddy': true, // or false if you want to hide
+          'showInTravelBuddy': true, // or false if need to hide
         });
       }
 

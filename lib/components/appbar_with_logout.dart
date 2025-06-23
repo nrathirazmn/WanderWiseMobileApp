@@ -10,7 +10,7 @@ AppBar buildAppBarWithLogout(BuildContext context, String title) {
         icon: Icon(Icons.logout),
         onPressed: () async {
           await FirebaseAuth.instance.signOut();
-          // You can also use Navigator.pushReplacementNamed(context, '/login') if needed
+          // Can also use Navigator.pushReplacementNamed(context, '/login') if needed but high chances aren't able to
         },
       ),
     ],

@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AdminUpdateScreen extends StatelessWidget {
   const AdminUpdateScreen({super.key});
 
-  // Patch likes, matches, and bio for all users
+  // Bug fix likes, matches, and bio for all users
   Future<void> patchUserFieldsForAll(BuildContext context) async {
     final usersRef = FirebaseFirestore.instance.collection('users');
     final snapshot = await usersRef.get();
@@ -37,7 +37,7 @@ class AdminUpdateScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
-    // 🔒 Only allow specific admin email
+    // Only allow specific admin email
     if (user == null || user.email != 'nrathirazmn@gmail.com') {
       return Scaffold(
         appBar: AppBar(title: Text('Unauthorized')),
@@ -68,7 +68,7 @@ class AdminUpdateScreen extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               ),
             ),
-            // 🧩 Add more admin utilities here as needed
+           
           ],
         ),
       ),

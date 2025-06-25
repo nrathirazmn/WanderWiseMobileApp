@@ -237,8 +237,8 @@ class _SwipeBuddyScreenState extends State<SwipeBuddyScreen> {
                   });
 
                   await messagesRef.add({
-                    'from': myUid,
-                    'text': 'Hey 👋',
+                  'senderId': myUid,                     
+                  'text': 'Hey 👋',
                     'timestamp': FieldValue.serverTimestamp(),
                   });
 

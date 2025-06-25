@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class FirestoreChatScreen extends StatefulWidget {
-  final String chatId; // This chatId should be passed from the previous screen
+  final String chatId; // Optional, safeChatId will be used instead
   final String peerId;
   final String peerName;
   final String? peerPhoto;
@@ -21,39 +21,44 @@ class FirestoreChatScreen extends StatefulWidget {
 
 class _FirestoreChatScreenState extends State<FirestoreChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  final user = FirebaseAuth.instance.currentUser;
+  String? currentUserId;
 
-  // Fallback-safe chatId, if not passed correctly
-  String get safeChatId {
-    final ids = [user?.uid ?? '', widget.peerId];
-    ids.sort();
-    return '${ids[0]}_${ids[1]}';
+  @override
+  void initState() {
+    super.initState();
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    print("✅ INIT | My UID: $currentUserId");
   }
 
-  // Send message to Firestore
+  String get safeChatId {
+    final ids = [currentUserId ?? '', widget.peerId];
+    ids.sort();
+    final id = '${ids[0]}_${ids[1]}';
+    print("🧩 Using chatId: $id");
+    return id;
+  }
+
   void _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty || user == null) return;
+    if (text.isEmpty || currentUserId == null) return;
 
     final messageData = {
-      'senderId': user!.uid,
+      'senderId': currentUserId,
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
     };
 
     try {
-      // Add message to the "messages" subcollection
       await FirebaseFirestore.instance
           .collection('chats')
           .doc(safeChatId)
           .collection('messages')
           .add(messageData);
 
-      // Update the last message and last timestamp in the "chats" document
       await FirebaseFirestore.instance.collection('chats').doc(safeChatId).set({
         'lastMessage': text,
         'lastTimestamp': FieldValue.serverTimestamp(),
-        'participants': [user!.uid, widget.peerId],
+        'participants': [currentUserId, widget.peerId],
       }, SetOptions(merge: true));
 
       _messageController.clear();
@@ -62,9 +67,12 @@ class _FirestoreChatScreenState extends State<FirestoreChatScreen> {
     }
   }
 
-  // Build the message bubble for each message
   Widget _buildMessageBubble(Map<String, dynamic> msg) {
-    bool isMe = msg['senderId'] == user?.uid;
+    final isMe = msg['senderId'] == currentUserId;
+    final messageText = msg['text'] ?? '';
+
+    print("💬 '$messageText' | senderId: ${msg['senderId']} | isMe: $isMe");
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -74,13 +82,14 @@ class _FirestoreChatScreenState extends State<FirestoreChatScreen> {
           color: isMe ? Colors.teal[100] : Colors.grey[200],
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(msg['text']),
+        child: Text(messageText),
       ),
     );
   }
 
-  // Message Stream for real-time updates
   Widget _buildMessageStream() {
+    print("🟢 Stream connected to: chats/$safeChatId/messages");
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('chats')
@@ -93,6 +102,7 @@ class _FirestoreChatScreenState extends State<FirestoreChatScreen> {
         if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
 
         final messages = snapshot.data!.docs;
+
         return ListView.builder(
           padding: EdgeInsets.all(10),
           itemCount: messages.length,
@@ -122,7 +132,7 @@ class _FirestoreChatScreenState extends State<FirestoreChatScreen> {
       ),
       body: Column(
         children: [
-          Expanded(child: _buildMessageStream()), // Displays all messages
+          Expanded(child: _buildMessageStream()),
           Divider(height: 1),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -136,7 +146,7 @@ class _FirestoreChatScreenState extends State<FirestoreChatScreen> {
                 ),
                 IconButton(
                   icon: Icon(Icons.send, color: Colors.teal),
-                  onPressed: _sendMessage, // Sends message when clicked
+                  onPressed: _sendMessage,
                 )
               ],
             ),

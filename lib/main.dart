@@ -114,19 +114,20 @@ class TravelBuddyApp extends StatelessWidget {
         '/travel-buddy': (context) => SwipeBuddyScreen(),
         '/user-guide-page': (context) => UserGuidesScreen(),
         
-        // '/chat': (context) {
-        //   final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
-        //   final isAI = args['isAI'] ?? false;
+        '/chat': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+          final isAI = args['isAI'] ?? false;  // Properly handle isAI argument
 
-        //   return isAI
-        //       ? ChatScreen(chatWith: args['peerName'])
-        //       : FirestoreChatScreen(
-        //           chatId: args['chatId'],
-        //           peerId: args['peerId'],
-        //           peerName: args['peerName'],
-        //           peerPhoto: args['peerPhoto'],
-        //         );
-        // },
+          return isAI
+              ? ChatScreen(chatWith: args['peerName'], peerName: '', isAI: true)  // Send isAI = true here
+              : FirestoreChatScreen(
+                  chatId: args['chatId'],
+                  peerId: args['peerId'],
+                  peerName: args['peerName'],
+                  peerPhoto: args['peerPhoto'],
+                );
+        },
+
       },
       onGenerateRoute: (settings) {
       if (settings.name == '/chat') {

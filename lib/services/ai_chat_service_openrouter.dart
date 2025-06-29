@@ -18,7 +18,7 @@ class AIChatService {
 
     final body = jsonEncode({
       "model": _model,
-      "messages": [
+      "messages": [ 
         {"role": "user", "content": message}
       ]
     });

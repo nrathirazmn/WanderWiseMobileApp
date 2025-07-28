@@ -116,10 +116,10 @@ class TravelBuddyApp extends StatelessWidget {
         
         '/chat': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
-          final isAI = args['isAI'] ?? false;  // Properly handle isAI argument
+          final isAI = args['isAI'] ?? false;  
 
           return isAI
-              ? ChatScreen(chatWith: args['peerName'], peerName: '', isAI: true)  // Send isAI = true here
+              ? ChatScreen(chatWith: args['peerName'], peerName: '', isAI: true)  
               : FirestoreChatScreen(
                   chatId: args['chatId'],
                   peerId: args['peerId'],

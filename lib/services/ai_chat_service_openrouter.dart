@@ -6,12 +6,11 @@ class AIChatService {
   final String _apiKey = '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'; // Actual API Key
   final String _baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
   final String _model = 'mistralai/mistral-7b-instruct';
-
+  
   Future<String> sendMessage(String message) async {
     final headers = {
       'Authorization': 'Bearer $_apiKey',
       'Content-Type': 'application/json',
-      // IMPORTANT: Replace with a real referer URL. Must be a domain you own or control.
       'HTTP-Referer': 'https://github.com/nrathirazmn',
       'X-Title': 'TravelBuddy AI'
     };

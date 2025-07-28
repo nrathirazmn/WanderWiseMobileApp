@@ -1,4 +1,3 @@
-//Used for AI Chat Screen
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +15,8 @@ class ChatScreen extends StatefulWidget {
     this.peerId,
     required this.peerName,
     this.peerPhoto,
-    required this.isAI, required chatWith,
+    required this.isAI,
+    required chatWith,
   });
 
   @override
@@ -29,7 +29,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final currentUser = FirebaseAuth.instance.currentUser!;
   bool _isLoading = false;
 
-  // Consistent and verified chatId
   String get chatId {
     final ids = [currentUser.uid, widget.peerId ?? ''];
     ids.sort();
@@ -45,15 +44,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (widget.isAI) {
       try {
-        await FirebaseFirestore.instance.collection('ai_messages').add({
+        final userAIRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('ai_messages');
+
+        // User message
+        await userAIRef.add({
           'from': currentUser.uid,
           'text': message,
           'timestamp': FieldValue.serverTimestamp(),
         });
 
+        // AI reply
         final reply = await _chatService.sendMessage(message);
 
-        await FirebaseFirestore.instance.collection('ai_messages').add({
+        await userAIRef.add({
           'from': 'ai',
           'text': reply,
           'timestamp': FieldValue.serverTimestamp(),
@@ -115,6 +121,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessageStream() {
     final stream = widget.isAI
         ? FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
             .collection('ai_messages')
             .orderBy('timestamp')
             .snapshots()
@@ -130,9 +138,11 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (context, snapshot) {
         if (snapshot.hasError) return Center(child: Text("Stream error"));
         if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+
         final docs = snapshot.data!.docs;
         return ListView.builder(
           itemCount: docs.length,
+          reverse: false,
           itemBuilder: (context, index) {
             final msg = docs[index].data() as Map<String, dynamic>;
             return _buildMessageBubble(msg);

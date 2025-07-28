@@ -62,8 +62,8 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
 
       final newTripDoc = await tripCollection.add({
         'destination': _destinationController.text.trim(),
-        'startDate': _startDate,
-        'endDate': _endDate,
+        'startDate': Timestamp.fromDate(_startDate!),
+        'endDate': Timestamp.fromDate(_endDate!),
         'participants': _isSolo ? [] : [{'photoUrl': FirebaseAuth.instance.currentUser?.photoURL}],
         'createdAt': FieldValue.serverTimestamp(),
       });

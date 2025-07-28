@@ -123,15 +123,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
         title: Text('Reports Summary', style: TextStyle(color: Colors.brown.shade800)),
         iconTheme: IconThemeData(color: Colors.brown.shade800),
         actions: [
-          // IconButton(
-          //   icon: Icon(Icons.picture_as_pdf, color: Colors.brown.shade800),
-          //   onPressed: () async {
-          //     final expenses = await _fetchExpenses();
-          //     final totals = _aggregateByCurrency(expenses);
-          //     _exportToPDF(totals);
-          //   },
-          //   tooltip: "Export PDF",
-             // )
         ],
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
@@ -282,14 +273,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 });
               }),
               Divider(thickness: 1.5),
-              // Padding(
-              //   padding: const EdgeInsets.only(top: 8.0),
-              //   child: Text(
-              //     "Total Converted: ${totalSum.toStringAsFixed(2)} ${_selectedCurrency ?? ''}",
-              //     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              //     textAlign: TextAlign.center,
-              //   ),
-              // ),
             ],
           );
         },

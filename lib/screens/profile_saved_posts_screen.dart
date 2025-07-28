@@ -1,4 +1,3 @@
-// PostDetailsScreen (full code)
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -64,9 +63,8 @@ class PostDetailsScreen extends StatelessWidget {
   }
 }
 
-// ProfileSavedPostsScreen (shows liked & saved posts)
 class ProfileSavedPostsScreen extends StatelessWidget {
-  final bool showSaved; // true = saved, false = liked
+  final bool showSaved; 
 
   const ProfileSavedPostsScreen({Key? key, required this.showSaved}) : super(key: key);
 

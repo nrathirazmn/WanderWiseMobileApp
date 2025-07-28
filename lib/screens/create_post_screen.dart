@@ -80,8 +80,8 @@ void _submitPost() async {
     'saves': [],
     'timestamp': FieldValue.serverTimestamp(),
     'imageUrl': imageUrl,
-    'isDraft': false, // 
-    'category': 'guide', // 
+    'isDraft': false, 
+    'category': 'guide', 
   };
 
   await FirebaseFirestore.instance.collection('forum_posts').add(post);

@@ -222,24 +222,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(data['title'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   Text('By ${data['author'] ?? data['authorName'] ?? 'Unknown'}', style: const TextStyle(color: Colors.white)),
                     Row(
-                      // children: [
-                      //   IconButton(
-                      //     icon: Icon(
-                      //       hasLiked ? Icons.favorite : Icons.favorite_border,
-                      //       color: Colors.white,
-                      //       size: 20,
-                      //     ),
-                      //     onPressed: () => _toggleAction(postId, 'likes', hasLiked),
-                      //   ),
-                      //   IconButton(
-                      //     icon: Icon(
-                      //       hasSaved ? Icons.bookmark : Icons.bookmark_border,
-                      //       color: Colors.white,
-                      //       size: 20,
-                      //     ),
-                      //     onPressed: () => _toggleAction(postId, 'saves', hasSaved),
-                      //   ),
-                      // ],
                     )
                   ],
                 ),
@@ -298,75 +280,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-//Upgrading UI - 06/06/2025 - 12:43am
-  // Widget _buildUserCard() {
-  //   return Column(
-  //     children: [
-  //       Container(
-  //         margin: const EdgeInsets.all(16),
-  //         padding: const EdgeInsets.all(16),
-  //         decoration: BoxDecoration(
-  //           color: Colors.brown[100],
-  //           borderRadius: BorderRadius.circular(12),
-  //         ),
-  //         child: Row(
-  //           children: [
-  //             CircleAvatar(
-  //               backgroundImage: _photoUrl != null ? NetworkImage(_photoUrl!) : null,
-  //               radius: 35,
-  //             ),
-  //             const SizedBox(width: 16),
-  //             Expanded(
-  //               child: Column(
-  //                 crossAxisAlignment: CrossAxisAlignment.start,
-  //                 children: [
-  //                   Text(_username ?? 'User', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-  //                   Text("Age: $_age y/o"),
-  //                   Text("Nationality: $_nationality"),
-  //                   Text("Contact: $_contact"),
-  //                   Text("Socials: $_social"),
-  //                 ],
-  //               ),
-  //             )
-  //           ],
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
-
-  // Widget _buildDestinationSpinBanner() {
-  //   return Padding(
-  //     padding: const EdgeInsets.all(16.0),
-  //     child: GestureDetector(
-  //       onTap: () => _showDestinationPopup(context),
-  //       child: Container(
-  //         padding: EdgeInsets.all(16),
-  //         decoration: BoxDecoration(
-  //           color: const Color.fromARGB(255, 86, 35, 1),
-  //           borderRadius: BorderRadius.circular(12),
-  //           border: Border.all(color: Colors.white),
-  //         ),
-  //         child: Row(
-  //           children: [
-  //             Icon(Icons.casino, color: Colors.white),
-  //             SizedBox(width: 12),
-  //             Expanded(
-  //               child: Column(
-  //                 crossAxisAlignment: CrossAxisAlignment.start,
-  //                 children: [
-  //                   Text('Not Sure on Your Next Destination?', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-  //                   Text('Let WanderWise choose it for you or choose from your own list!', style: TextStyle(color: Colors.white70, fontSize: 12)),
-  //                 ],
-  //               ),
-  //             ),
-  //             Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -390,61 +303,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          // StreamBuilder<QuerySnapshot>(
-          //   stream: FirebaseFirestore.instance
-          //       .collection('chats')
-          //       .where('participants', arrayContains: FirebaseAuth.instance.currentUser?.uid)
-          //       .snapshots(),
-          //   builder: (context, snapshot) {
-          //     bool hasUnread = false;
-
-          //     if (snapshot.hasData) {
-          //       for (var doc in snapshot.data!.docs) {
-          //         final data = doc.data() as Map<String, dynamic>;
-          //         final lastSender = data['lastMessageSender'];
-          //         final readBy = List<String>.from(data['readBy'] ?? []);
-          //         final currentUid = FirebaseAuth.instance.currentUser?.uid;
-
-          //         if (lastSender != currentUid && !readBy.contains(currentUid)) {
-          //           hasUnread = true;
-          //           break;
-          //         }
-          //       }
-          //     }
-
-          //     return Stack(
-          //       children: [
                   IconButton(
                     icon: const Icon(Icons.message, color: Colors.black),
                     onPressed: () {
                       Navigator.pushNamed(context, '/messages');
                     },
                   ),
-      //             if (hasUnread)
-      //               Positioned(
-      //                 right: 10,
-      //                 top: 10,
-      //                 child: Container(
-      //                   width: 9,
-      //                   height: 9,
-      //                   decoration: BoxDecoration(
-      //                     color: Colors.red,
-      //                     shape: BoxShape.circle,
-      //                   ),
-      //                 ),
-      //               ),
-      //           ],
-      //         );
-      //       },
-      //     ),
          ],
        ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: () {
-      //     Navigator.push(context, MaterialPageRoute(builder: (_) => CreatePostScreen()));
-      //   },
-      //   child: const Icon(Icons.add),
-      // ),
       body: StreamBuilder(
         stream: FirebaseFirestore.instance.collection('forum_posts').snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -598,10 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildHeroBanner(),
               _buildAIChatBanner(),
-              // _buildUserCard(),
-              // _buildDestinationSpinBanner(),
               _buildDailyQuote(),
-              // _buildGuideSection("📒 User Guide and Experience", guides),
               _buildQuickActions(context),
 
             ],

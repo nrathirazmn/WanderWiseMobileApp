@@ -1,4 +1,3 @@
-// (Updated ProfileScreen with real-time gradient updates from Firestore)
 import 'dart:ui';
 import 'dart:convert';
 import 'dart:io';

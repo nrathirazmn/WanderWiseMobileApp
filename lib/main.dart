@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-// import 'package:firebase_auth/firebase_auth.dart';
-// import 'package:flutter/foundation.dart';
 
 // Screens
 import 'screens/forum_screen.dart';
@@ -56,16 +54,6 @@ class TravelBuddyApp extends StatelessWidget {
         },
         '/admin-update': (context) => AdminUpdateScreen(),
         '/landingpage': (context) => LandingPage(),
-        // '/trip-details': (context) {
-        //   final tripId = ModalRoute.of(context)?.settings.arguments as String?;
-        //   if (tripId == null || tripId.isEmpty) {
-        //     return Scaffold(
-        //       appBar: AppBar(title: Text('Error')),
-        //       body: Center(child: Text('Trip ID is missing')),
-        //     );
-        //   }
-        //   return TripDetailsScreen(tripId: tripId);
-        // },
         '/daily-itinerary': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
@@ -138,7 +126,6 @@ class TravelBuddyApp extends StatelessWidget {
             peerId: args['peerId'],
             peerName: args['peerName'],
             peerPhoto: args['peerPhoto'],
-            // isAI: args['isAI'],
           ),
         );
       }
@@ -201,8 +188,6 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(icon: Icon(Icons.attach_money), label: 'Convert'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Itinerary'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          // BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Travel Buddy'),
-
         ],
       ),
     );

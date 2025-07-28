@@ -1,4 +1,4 @@
-// // AuthScreen is now a simple router between LoginScreen and RegisterScreen
+// Not used - AuthScreen 
 
 // import 'package:flutter/material.dart';
 // import 'login_screen.dart';

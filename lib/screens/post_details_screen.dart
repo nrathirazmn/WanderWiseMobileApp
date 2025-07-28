@@ -1,4 +1,3 @@
-// [Trip Plan Tab updated to match user screenshot: day labels, checklist cards, etc. | Overview Tab now shows embedded guides | PostDetailsScreen logic enhanced: saving guides into existing or new trips with dialog]
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
